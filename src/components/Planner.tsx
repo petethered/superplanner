@@ -33,6 +33,7 @@ function loadConfig(): PlannerConfig {
     dailyIncome: 1e15,
     dailyIncomeSuffix: "q",
     dailyIncomeValue: 1,
+    minDays: 14,
   };
 }
 
@@ -45,6 +46,43 @@ function formatHours(h: number): string {
   const hrs = Math.floor(h % 24);
   if (days > 0) return `${days}d ${hrs}h`;
   return `${hrs}h`;
+}
+
+function formatDuration(h: number): string {
+  const days = Math.floor(h / 24);
+  const hrs = Math.floor(h % 24);
+  const mins = Math.round((h % 1) * 60);
+  return `${days}d ${hrs}h ${mins}m`;
+}
+
+function formatCost(cost: number): string {
+  if (cost >= 1e18) return `${(cost / 1e18).toFixed(2)} Q`;
+  if (cost >= 1e15) return `${(cost / 1e15).toFixed(2)} q`;
+  if (cost >= 1e12) return `${(cost / 1e12).toFixed(2)} T`;
+  if (cost >= 1e9) return `${(cost / 1e9).toFixed(2)} B`;
+  return cost.toFixed(0);
+}
+
+interface PlanSummary {
+  totalCost: number;
+  gainByType: Record<string, number>;
+}
+
+function computeSummary(results: SlotPlan[]): PlanSummary {
+  let totalCost = 0;
+  const gainByType: Record<string, number> = {};
+
+  for (const slot of results) {
+    for (const planned of slot.steps) {
+      const { labStep } = planned;
+      totalCost += labStep.cost;
+      // gain = (% per day / 24) * durationHours
+      const gain = (labStep.gainPerDay / 24) * labStep.durationHours;
+      gainByType[labStep.type] = (gainByType[labStep.type] || 0) + gain;
+    }
+  }
+
+  return { totalCost, gainByType };
 }
 
 interface PlannerProps {
@@ -91,7 +129,7 @@ export function Planner({ sheets }: PlannerProps) {
       return;
     }
 
-    const plans = runSimulation(allSteps, config.dailyIncome);
+    const plans = runSimulation(allSteps, config.dailyIncome, config.minDays);
     setResults(plans);
   }
 
@@ -153,6 +191,19 @@ export function Planner({ sheets }: PlannerProps) {
           </select>
         </div>
 
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500 font-mono-data">DAYS:</span>
+          <select
+            value={config.minDays}
+            onChange={(e) => updateConfig({ minDays: Number(e.target.value) })}
+            className="px-2 py-1 bg-slate-800/70 border border-slate-700 rounded text-xs text-slate-400 font-mono-data focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
+          >
+            {[7, 14, 30, 60, 90].map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+
         <button
           onClick={handleCalculate}
           disabled={noTypesSelected || noIncome}
@@ -194,10 +245,15 @@ export function Planner({ sheets }: PlannerProps) {
                 key={i}
                 className="flex-1 min-w-[200px] bg-slate-800/30 rounded border border-slate-700/30"
               >
-                <div className="px-3 py-2 border-b border-slate-700/30">
+                <div className="px-3 py-2 border-b border-slate-700/30 flex items-center gap-2">
                   <span className="font-display text-[10px] font-bold tracking-[0.15em] text-cyan-400">
                     SLOT {i + 1}
                   </span>
+                  {slot.steps.length > 0 && (
+                    <span className="text-[10px] text-slate-500 font-mono-data">
+                      ({formatDuration(slot.steps.reduce((sum, s) => sum + s.labStep.durationHours + s.idleHoursBefore, 0))})
+                    </span>
+                  )}
                 </div>
                 {slot.steps.length === 0 ? (
                   <p className="text-center text-slate-600 text-xs py-4 font-mono-data">
@@ -246,6 +302,30 @@ export function Planner({ sheets }: PlannerProps) {
               </div>
             ))}
           </div>
+          {(() => {
+            const summary = computeSummary(results);
+            return (
+              <div className="mt-4 bg-slate-800/30 rounded border border-slate-700/30 overflow-hidden">
+                <div className="px-3 py-2 border-b border-slate-700/30">
+                  <span className="font-display text-[10px] font-bold tracking-[0.15em] text-cyan-400">
+                    SUMMARY
+                  </span>
+                </div>
+                <div className="px-4 py-3 flex flex-wrap gap-x-8 gap-y-2">
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-mono-data uppercase tracking-wider mb-1">Total Spend</div>
+                    <div className="text-sm text-slate-200 font-mono-data">{formatCost(summary.totalCost)}</div>
+                  </div>
+                  {Object.entries(summary.gainByType).map(([type, gain]) => (
+                    <div key={type}>
+                      <div className="text-[10px] text-slate-500 font-mono-data uppercase tracking-wider mb-1">{type}</div>
+                      <div className="text-sm text-cyan-300 font-mono-data">{gain.toFixed(2)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           <GanttChart results={results} labColors={labColors} />
           </>
         )}

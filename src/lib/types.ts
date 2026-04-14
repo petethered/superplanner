@@ -37,6 +37,7 @@ export interface PlannerConfig {
   dailyIncome: number;
   dailyIncomeSuffix: string;
   dailyIncomeValue: number;
+  minDays: number;
 }
 
 export interface PlannedStep {
