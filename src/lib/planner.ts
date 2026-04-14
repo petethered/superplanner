@@ -1,6 +1,7 @@
 import type { LabStep, SlotPlan, PlannedStep, SimulationResult, TableData } from "./types";
 
 const COST_SUFFIXES: Record<string, number> = {
+  M: 1e6,
   B: 1e9,
   T: 1e12,
   q: 1e15,
@@ -10,7 +11,7 @@ const COST_SUFFIXES: Record<string, number> = {
 export function parseCost(str: string): number {
   const trimmed = str.trim();
   if (!trimmed) return 0;
-  const match = trimmed.match(/^([\d.,\s]+?)\s*([BTqQ]?)$/);
+  const match = trimmed.match(/^([\d.,\s]+?)\s*([MBTqQ]?)$/);
   if (!match) return 0;
   const numStr = match[1].replace(/[\s,]/g, "");
   const value = parseFloat(numStr);

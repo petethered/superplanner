@@ -17,6 +17,7 @@ function formatCost(cost: number): string {
   if (cost >= 1e15) return `${(cost / 1e15).toFixed(2)} q`;
   if (cost >= 1e12) return `${(cost / 1e12).toFixed(2)} T`;
   if (cost >= 1e9) return `${(cost / 1e9).toFixed(2)} B`;
+  if (cost >= 1e6) return `${(cost / 1e6).toFixed(2)} M`;
   return cost.toFixed(0);
 }
 

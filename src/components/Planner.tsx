@@ -16,6 +16,8 @@ const TYPE_TO_SHEET_KEY: Record<string, string> = {
 };
 
 const SUFFIX_MULTIPLIERS: Record<string, number> = {
+  M: 1e6,
+  B: 1e9,
   T: 1e12,
   q: 1e15,
   Q: 1e18,
@@ -60,6 +62,7 @@ function formatCost(cost: number): string {
   if (cost >= 1e15) return `${(cost / 1e15).toFixed(2)} q`;
   if (cost >= 1e12) return `${(cost / 1e12).toFixed(2)} T`;
   if (cost >= 1e9) return `${(cost / 1e9).toFixed(2)} B`;
+  if (cost >= 1e6) return `${(cost / 1e6).toFixed(2)} M`;
   return cost.toFixed(0);
 }
 
@@ -185,6 +188,8 @@ export function Planner({ sheets }: PlannerProps) {
             }
             className="px-2 py-1 bg-slate-800/70 border border-slate-700 rounded text-xs text-slate-400 font-mono-data focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
           >
+            <option value="M">M</option>
+            <option value="B">B</option>
             <option value="T">T</option>
             <option value="q">q</option>
             <option value="Q">Q</option>
