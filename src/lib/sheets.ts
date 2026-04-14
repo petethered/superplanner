@@ -71,7 +71,7 @@ export function extractTableData(
 ): TableData {
   const { rows } = response.table;
   const rowStart = 3;
-  const rowEnd = 43;
+  const rowEnd = 100;
   const headers = ["LAB", "LEVEL", "COST", "DURATION", "% GAIN"];
   const tableRows: string[][] = [];
   for (let r = rowStart; r <= rowEnd && r < rows.length; r++) {

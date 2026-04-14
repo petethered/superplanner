@@ -34,12 +34,12 @@ describe("extractTableData", () => {
     ]);
   });
 
-  it("extracts rows 4-44 (indices 3-43)", () => {
+  it("extracts rows 4 to end of data (indices 3+)", () => {
     const response = makeResponse(12, 50);
     const data = extractTableData(response);
-    expect(data.rows).toHaveLength(41);
+    expect(data.rows).toHaveLength(47);
     expect(data.rows[0][0]).toBe("R3C5");
-    expect(data.rows[40][0]).toBe("R43C5");
+    expect(data.rows[46][0]).toBe("R49C5");
   });
 
   it("handles fewer rows than expected", () => {

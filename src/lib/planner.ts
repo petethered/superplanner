@@ -110,14 +110,15 @@ export function runSimulation(
     }
   }
 
-  function findBestAffordable(): { step: LabStep; key: string } | null {
+  function findBestAffordable(budget?: number): { step: LabStep; key: string } | null {
+    const maxBudget = budget ?? pool;
     let best: { step: LabStep; key: string } | null = null;
     for (const [key, queue] of labQueues) {
       if (running.has(key)) continue;
       const idx = labNextIdx.get(key)!;
       if (idx >= queue.length) continue;
       const candidate = queue[idx];
-      if (candidate.cost > pool) continue;
+      if (candidate.cost > maxBudget) continue;
       if (
         !best ||
         candidate.gainPerDay > best.step.gainPerDay ||
@@ -149,13 +150,25 @@ export function runSimulation(
 
     freeFinishedSlots();
 
-    // Try to assign to each free slot
-    let assigned = false;
+    // Count free slots and find cheapest lab for budget reservation
+    const freeSlotIds: number[] = [];
     for (let i = 0; i < 3; i++) {
-      if (slotLabKey[i] !== null) continue;
-      if (slotFreeAt[i] >= minHours) continue;
+      if (slotLabKey[i] === null && slotFreeAt[i] < minHours) {
+        freeSlotIds.push(i);
+      }
+    }
 
-      const best = findBestAffordable();
+    const cheapest = freeSlotIds.length > 1 ? findCheapestAvailable() : null;
+    const reserveCost = cheapest?.cost ?? 0;
+
+    // Try to assign to each free slot, reserving budget for remaining slots
+    let assigned = false;
+    for (let fi = 0; fi < freeSlotIds.length; fi++) {
+      const i = freeSlotIds[fi];
+      const slotsAfter = freeSlotIds.length - fi - 1;
+      const budget = pool - reserveCost * slotsAfter;
+
+      const best = findBestAffordable(budget > 0 ? budget : 0);
       if (!best) continue;
 
       plans[i].push({
