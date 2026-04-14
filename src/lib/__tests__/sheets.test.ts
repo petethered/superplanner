@@ -61,4 +61,11 @@ describe("extractTableData", () => {
     const data = extractTableData(response);
     expect(data.rows[0][0]).toBe("");
   });
+
+  it("extracts custom column range", () => {
+    const response = makeResponse(35, 50);
+    const data = extractTableData(response, 27, 31);
+    expect(data.rows[0][0]).toBe("R3C27");
+    expect(data.rows[0][4]).toBe("R3C31");
+  });
 });
