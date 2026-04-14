@@ -4,6 +4,7 @@ import { SetupPage } from "./components/SetupPage";
 import { Navbar } from "./components/Navbar";
 import { SettingsModal } from "./components/SettingsModal";
 import { TableGrid } from "./components/TableGrid";
+import { Footer } from "./components/Footer";
 import {
   getUrls,
   setUrls,
@@ -94,6 +95,7 @@ export default function App() {
         )}
         {sheets && <TableGrid sheets={sheets} />}
       </main>
+      <Footer lastSync={lastSync} />
       {settingsOpen && (
         <SettingsModal
           urls={urls}
