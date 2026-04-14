@@ -61,7 +61,9 @@ export function parseLabSteps(type: string, data: TableData): LabStep[] {
 export function runSimulation(
   allSteps: LabStep[],
   dailyIncome: number,
+  minDays = 10,
 ): SlotPlan[] {
+  const minHours = minDays * 24;
   // Build lab queues grouped by unique lab identity, sorted by level
   const labQueues = new Map<string, LabStep[]>();
   for (const s of allSteps) {
@@ -134,7 +136,7 @@ export function runSimulation(
   }
 
   for (let iter = 0; iter < 5000; iter++) {
-    if (plans.every((p) => p.length >= 10)) break;
+    if (slotFreeAt.every((t) => t >= minHours)) break;
 
     freeFinishedSlots();
 
@@ -142,7 +144,7 @@ export function runSimulation(
     let assigned = false;
     for (let i = 0; i < 3; i++) {
       if (slotLabKey[i] !== null) continue;
-      if (plans[i].length >= 10) continue;
+      if (slotFreeAt[i] >= minHours) continue;
 
       const best = findBestAffordable();
       if (!best) continue;

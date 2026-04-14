@@ -131,7 +131,7 @@ describe("runSimulation", () => {
       step("eHP", "C", 1, 100, 24, 3),
       step("eHP", "D", 1, 100, 24, 2),
     ];
-    const result = runSimulation(steps, 1000);
+    const result = runSimulation(steps, 1000, 1);
     const firstLabs = result.map((s) => s.steps[0]?.labStep.lab).sort();
     expect(firstLabs).toEqual(["A", "B", "C"]);
   });
@@ -141,7 +141,7 @@ describe("runSimulation", () => {
       step("eHP", "Expensive", 1, 2000, 24, 10),
       step("eHP", "Cheap", 1, 100, 24, 5),
     ];
-    const result = runSimulation(steps, 500);
+    const result = runSimulation(steps, 500, 1);
     const assigned = result.flatMap((s) => s.steps.map((p) => p.labStep.lab));
     expect(assigned[0]).toBe("Cheap");
   });
@@ -151,7 +151,7 @@ describe("runSimulation", () => {
       step("eHP", "A", 1, 100, 2, 10),
       step("eHP", "A", 2, 100, 2, 9),
     ];
-    const result = runSimulation(steps, 1000);
+    const result = runSimulation(steps, 1000, 1);
     const aSteps = result
       .flatMap((s) => s.steps)
       .filter((p) => p.labStep.lab === "A")
@@ -169,7 +169,7 @@ describe("runSimulation", () => {
       step("eHP", "A", 2, 100, 24, 9),
       step("eHP", "B", 1, 100, 24, 5),
     ];
-    const result = runSimulation(steps, 1000);
+    const result = runSimulation(steps, 1000, 1);
     expect(result[0].steps[0].labStep.lab).toBe("A");
     expect(result[1].steps[0].labStep.lab).toBe("B");
   });
@@ -178,7 +178,7 @@ describe("runSimulation", () => {
     const steps = [
       step("eHP", "A", 1, 500, 24, 10),
     ];
-    const result = runSimulation(steps, 200);
+    const result = runSimulation(steps, 200, 1);
     const allSteps = result.flatMap((s) => s.steps);
     expect(allSteps).toHaveLength(1);
     expect(allSteps[0].startHour).toBeGreaterThan(0);
@@ -189,7 +189,26 @@ describe("runSimulation", () => {
       step("eHP", "Slow", 1, 100, 48, 5),
       step("eHP", "Fast", 1, 100, 12, 5),
     ];
-    const result = runSimulation(steps, 1000);
+    const result = runSimulation(steps, 1000, 1);
     expect(result[0].steps[0].labStep.lab).toBe("Fast");
+  });
+
+  it("fills slots for at least minDays", () => {
+    const steps = [
+      step("eHP", "A", 1, 100, 72, 5),
+      step("eHP", "B", 1, 100, 72, 4),
+      step("eHP", "C", 1, 100, 72, 3),
+      step("eHP", "A", 2, 100, 72, 2),
+      step("eHP", "B", 2, 100, 72, 1),
+      step("eHP", "C", 2, 100, 72, 0.5),
+    ];
+    const result = runSimulation(steps, 1000, 5);
+    // Each lab takes 3 days. With minDays=5, each slot needs at least 2 steps.
+    for (const slot of result) {
+      const endHour = slot.steps.length > 0
+        ? slot.steps[slot.steps.length - 1].startHour + slot.steps[slot.steps.length - 1].labStep.durationHours
+        : 0;
+      expect(endHour).toBeGreaterThanOrEqual(5 * 24);
+    }
   });
 });
