@@ -12,6 +12,14 @@ function formatHours(h: number): string {
   return `${hrs}h`;
 }
 
+function formatCost(cost: number): string {
+  if (cost >= 1e18) return `${(cost / 1e18).toFixed(2)} Q`;
+  if (cost >= 1e15) return `${(cost / 1e15).toFixed(2)} q`;
+  if (cost >= 1e12) return `${(cost / 1e12).toFixed(2)} T`;
+  if (cost >= 1e9) return `${(cost / 1e9).toFixed(2)} B`;
+  return cost.toFixed(0);
+}
+
 export function GanttChart({ results, labColors }: GanttChartProps) {
   // Calculate total time span
   let maxHour = 0;
@@ -154,7 +162,7 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
                       return (
                         <div
                           key={`block-${j}`}
-                          className="absolute rounded-sm border border-white/10 overflow-hidden flex items-center px-1 cursor-default transition-all hover:brightness-125 hover:border-white/25"
+                          className="gantt-block absolute rounded-sm border border-white/10 overflow-hidden flex items-center px-1 cursor-default transition-all hover:brightness-125 hover:border-white/25"
                           style={{
                             left: `${left}%`,
                             width: `${width}%`,
@@ -162,12 +170,7 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
                             height: `${LANE_HEIGHT}px`,
                             backgroundColor: ganttBg,
                           }}
-                          title={[
-                            `${planned.labStep.lab} lvl ${planned.labStep.level}`,
-                            `${planned.labStep.gainPerDay.toFixed(2)}%/day`,
-                            `Duration: ${formatHours(planned.labStep.durationHours)}`,
-                            `Starts: Day ${(planned.startHour / 24).toFixed(1)}`,
-                          ].join("\n")}
+                          data-tooltip={`${planned.labStep.lab} lvl ${planned.labStep.level} \u2022 ${formatCost(planned.labStep.cost)} \u2022 ${planned.labStep.gainPerDay.toFixed(2)}%/d \u2022 ${formatHours(planned.labStep.durationHours)}`}
                         >
                           <span className="text-[9px] text-slate-200 font-mono-data truncate leading-none">
                             {planned.labStep.lab}
