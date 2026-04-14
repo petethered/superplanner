@@ -3,6 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { SetupPage } from "./components/SetupPage";
 import { Navbar } from "./components/Navbar";
 import { SettingsModal } from "./components/SettingsModal";
+import { TableGrid } from "./components/TableGrid";
 import {
   getUrls,
   setUrls,
@@ -73,15 +74,15 @@ export default function App() {
         loading={loading}
         isStale={isStale}
       />
-      <main className="flex-1 flex items-center justify-center p-6">
-        {loading && (
-          <div className="flex items-center gap-2 text-gray-500">
+      <main className="flex-1">
+        {loading && !sheets && (
+          <div className="flex items-center justify-center gap-2 text-gray-500 p-12">
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span>Loading sheets...</span>
           </div>
         )}
         {error && (
-          <div className="text-center">
+          <div className="flex flex-col items-center justify-center p-12 text-center">
             <p className="text-red-600 mb-4">{error}</p>
             <button
               onClick={handleSync}
@@ -91,11 +92,7 @@ export default function App() {
             </button>
           </div>
         )}
-        {!loading && !error && sheets && (
-          <p className="text-green-600">
-            Data loaded! ({Object.keys(sheets).length} tables)
-          </p>
-        )}
+        {sheets && <TableGrid sheets={sheets} />}
       </main>
       {settingsOpen && (
         <SettingsModal
