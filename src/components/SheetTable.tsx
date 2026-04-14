@@ -28,7 +28,7 @@ export function SheetTable({ title, data, labColors, labColumn = 0, headerExtra 
           value={String(limit)}
           onChange={(e) => {
             const val = e.target.value;
-            setLimit(val === "all" ? "all" : Number(val));
+            setLimit(val === "all" ? "all" : Number(val) as 10 | 20 | 50);
           }}
           className="text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-400 focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
         >

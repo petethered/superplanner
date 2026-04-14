@@ -1,4 +1,4 @@
-import type { LabStep, SlotPlan, PlannedStep, SimulationResult, TableData } from "./types";
+import type { LabStep, PlannedStep, SimulationResult, TableData } from "./types";
 
 const COST_SUFFIXES: Record<string, number> = {
   M: 1e6,

@@ -29,7 +29,7 @@ export function fetchSheet(
       clearTimeout(timer);
       cleanup();
       if (data.status !== "ok" || !data.table) {
-        const errors = (data as Record<string, unknown>).errors as
+        const errors = (data as unknown as Record<string, unknown>).errors as
           | Array<{ message?: string; detailed_message?: string }>
           | undefined;
         if (errors?.length) {

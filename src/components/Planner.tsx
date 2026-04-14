@@ -3,7 +3,7 @@ import { Calculator } from "lucide-react";
 import { parseLabSteps, runSimulation } from "../lib/planner";
 import { buildLabColorMap } from "../lib/colors";
 import { GanttChart } from "./GanttChart";
-import type { TableData, PlannerConfig, SimulationResult } from "../lib/types";
+import type { TableData, PlannerConfig, SimulationResult, SlotPlan } from "../lib/types";
 
 const ALL_TYPES = ["eHP", "regen", "eDAMAGE", "eECON", "SHARD PATH"];
 
@@ -234,7 +234,7 @@ export function Planner({ sheets }: PlannerProps) {
         )}
 
         {results &&
-          results.length > 0 &&
+          results.slots.length > 0 &&
           results.slots.every((s) => s.steps.length === 0) && (
             <p className="text-center text-amber-400 text-xs font-mono-data py-8">
               No affordable labs with current income. Try increasing daily
