@@ -40,10 +40,11 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
   const LANE_HEIGHT = 32;
   const LANE_GAP = 6;
   const HEADER_HEIGHT = 16;
-  const CHART_HEIGHT = HEADER_HEIGHT + 3 * LANE_HEIGHT + 2 * LANE_GAP;
+  const TOOLTIP_SPACE = 28;
+  const CHART_HEIGHT = TOOLTIP_SPACE + HEADER_HEIGHT + 3 * LANE_HEIGHT + 2 * LANE_GAP;
 
   return (
-    <div className="mt-4 bg-slate-800/30 rounded border border-slate-700/30 overflow-hidden">
+    <div className="mt-4 bg-slate-800/30 rounded border border-slate-700/30">
       <div className="px-3 py-2 border-b border-slate-700/30">
         <span className="font-display text-[10px] font-bold tracking-[0.15em] text-cyan-400">
           TIMELINE
@@ -52,14 +53,14 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
           {totalDays} days
         </span>
       </div>
-      <div className="p-3 overflow-x-auto">
+      <div className="p-3" style={{ overflowX: "auto", overflowY: "visible" }}>
         <div className="flex">
           {/* Slot labels */}
           <div
             className="shrink-0 flex flex-col"
             style={{ width: "32px" }}
           >
-            <div style={{ height: `${HEADER_HEIGHT}px` }} />
+            <div style={{ height: `${TOOLTIP_SPACE + HEADER_HEIGHT}px` }} />
             {[1, 2, 3].map((n, i) => (
               <div
                 key={n}
@@ -89,7 +90,7 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
               {dayMarkers.map((day) => {
                 const left = `${(day / totalDays) * 100}%`;
                 return (
-                  <div key={day} className="absolute" style={{ left, top: 0, bottom: 0 }}>
+                  <div key={day} className="absolute" style={{ left, top: `${TOOLTIP_SPACE}px`, bottom: 0 }}>
                     <div
                       className="text-[8px] text-slate-600 font-mono-data whitespace-nowrap"
                       style={{ transform: "translateX(-50%)" }}
@@ -109,7 +110,7 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
 
               {/* Swim lanes */}
               {results.map((slot, slotIdx) => {
-                const laneTop = HEADER_HEIGHT + slotIdx * (LANE_HEIGHT + LANE_GAP);
+                const laneTop = TOOLTIP_SPACE + HEADER_HEIGHT + slotIdx * (LANE_HEIGHT + LANE_GAP);
                 return (
                   <div key={slotIdx}>
                     {/* Lane background */}
@@ -162,7 +163,7 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
                       return (
                         <div
                           key={`block-${j}`}
-                          className="gantt-block absolute rounded-sm border border-white/10 overflow-hidden flex items-center px-1 cursor-default transition-all hover:brightness-125 hover:border-white/25"
+                          className="gantt-block absolute rounded-sm border border-white/10 flex items-center px-1 cursor-default transition-all hover:brightness-125 hover:border-white/25"
                           style={{
                             left: `${left}%`,
                             width: `${width}%`,
@@ -172,10 +173,10 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
                           }}
                           data-tooltip={`${planned.labStep.lab} lvl ${planned.labStep.level} \u2022 ${formatCost(planned.labStep.cost)} \u2022 ${planned.labStep.gainPerDay.toFixed(2)}%/d \u2022 ${formatHours(planned.labStep.durationHours)}`}
                         >
-                          <span className="text-[9px] text-slate-200 font-mono-data truncate leading-none">
+                          <span className="text-[9px] text-slate-200 font-mono-data truncate leading-none overflow-hidden">
                             {planned.labStep.lab}
                           </span>
-                          <span className="text-[8px] text-slate-400 font-mono-data ml-1 shrink-0 leading-none">
+                          <span className="text-[8px] text-slate-400 font-mono-data ml-1 shrink-0 leading-none overflow-hidden">
                             L{planned.labStep.level}
                           </span>
                         </div>
