@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClipboardList } from "lucide-react";
+import { Crosshair } from "lucide-react";
 import type { SheetUrls } from "../lib/types";
 import { extractSheetId } from "../lib/storage";
 
@@ -26,20 +26,22 @@ export function SetupPage({ onSave }: SetupPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
-        <div className="flex items-center gap-3 mb-2">
-          <ClipboardList className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">SuperPlanner</h1>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="animate-fade-up border border-cyan-800/40 rounded-lg bg-slate-900/80 backdrop-blur-sm p-8 max-w-md w-full shadow-2xl shadow-cyan-950/30 card-shimmer">
+        <div className="flex items-center gap-3 mb-1">
+          <Crosshair className="w-7 h-7 text-cyan-400" />
+          <h1 className="font-display text-xl font-bold tracking-wider text-cyan-50 uppercase">
+            SuperPlanner
+          </h1>
         </div>
-        <p className="text-gray-600 mb-6">
-          Enter your Google Sheets URLs to get started. Both sheets must be
-          shared with &ldquo;Anyone with the link&rdquo; viewer access.
+        <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+          Connect your Google Sheets data sources. Both sheets must be shared
+          with &ldquo;Anyone with the link&rdquo; viewer access.
         </p>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Effective Paths Sheet
+            <label className="block text-xs font-semibold tracking-widest uppercase text-slate-500 mb-1.5">
+              Effective Paths
             </label>
             <input
               type="url"
@@ -49,13 +51,13 @@ export function SetupPage({ onSave }: SetupPageProps) {
                 setError("");
               }}
               placeholder="https://docs.google.com/spreadsheets/d/..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 bg-slate-800/70 border border-slate-700 rounded text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors font-mono-data"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Modules Sheet
+            <label className="block text-xs font-semibold tracking-widest uppercase text-slate-500 mb-1.5">
+              Modules
             </label>
             <input
               type="url"
@@ -65,16 +67,18 @@ export function SetupPage({ onSave }: SetupPageProps) {
                 setError("");
               }}
               placeholder="https://docs.google.com/spreadsheets/d/..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 bg-slate-800/70 border border-slate-700 rounded text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors font-mono-data"
               required
             />
           </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && (
+            <p className="text-red-400 text-xs font-mono-data">{error}</p>
+          )}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium"
+            className="w-full py-2.5 px-4 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold tracking-widest uppercase rounded transition-all hover:shadow-lg hover:shadow-cyan-500/20"
           >
-            Get Started
+            Initialize
           </button>
         </form>
       </div>

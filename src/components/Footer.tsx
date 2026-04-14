@@ -25,10 +25,12 @@ export function Footer({ lastSync }: FooterProps) {
   }, [lastSync]);
 
   return (
-    <footer className="border-t border-gray-200 bg-white px-4 py-3 text-center text-sm text-gray-500">
-      {lastSync
-        ? `Last synced: ${formatTimeAgo(lastSync)}`
-        : "Not yet synced"}
+    <footer className="border-t border-slate-800/50 bg-slate-900/50 px-4 py-2.5 text-center">
+      <span className="text-xs font-mono-data tracking-wide text-slate-600">
+        {lastSync
+          ? `LAST SYNC: ${formatTimeAgo(lastSync).toUpperCase()}`
+          : "AWAITING SYNC"}
+      </span>
     </footer>
   );
 }
