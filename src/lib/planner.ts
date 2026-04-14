@@ -1,4 +1,4 @@
-import type { LabStep, TableData } from "./types";
+import type { LabStep, SlotPlan, PlannedStep, TableData } from "./types";
 
 const COST_SUFFIXES: Record<string, number> = {
   B: 1e9,
@@ -56,4 +56,136 @@ export function parseLabSteps(type: string, data: TableData): LabStep[] {
     });
   }
   return steps;
+}
+
+export function runSimulation(
+  allSteps: LabStep[],
+  dailyIncome: number,
+): SlotPlan[] {
+  // Build lab queues grouped by unique lab identity, sorted by level
+  const labQueues = new Map<string, LabStep[]>();
+  for (const s of allSteps) {
+    const key = `${s.type}::${s.lab}`;
+    if (!labQueues.has(key)) labQueues.set(key, []);
+    labQueues.get(key)!.push(s);
+  }
+  for (const queue of labQueues.values()) {
+    queue.sort((a, b) => a.level - b.level);
+  }
+
+  // Next available level index per lab
+  const labNextIdx = new Map<string, number>();
+  for (const key of labQueues.keys()) {
+    labNextIdx.set(key, 0);
+  }
+
+  // Currently running lab keys
+  const running = new Set<string>();
+
+  // Slot state
+  const plans: PlannedStep[][] = [[], [], []];
+  const slotFreeAt = [0, 0, 0];
+  const slotLabKey: (string | null)[] = [null, null, null];
+
+  let hour = 0;
+  let pool = dailyIncome;
+
+  function freeFinishedSlots(): void {
+    for (let i = 0; i < 3; i++) {
+      if (slotLabKey[i] && slotFreeAt[i] <= hour) {
+        running.delete(slotLabKey[i]!);
+        slotLabKey[i] = null;
+      }
+    }
+  }
+
+  function findBestAffordable(): { step: LabStep; key: string } | null {
+    let best: { step: LabStep; key: string } | null = null;
+    for (const [key, queue] of labQueues) {
+      if (running.has(key)) continue;
+      const idx = labNextIdx.get(key)!;
+      if (idx >= queue.length) continue;
+      const candidate = queue[idx];
+      if (candidate.cost > pool) continue;
+      if (
+        !best ||
+        candidate.gainPerDay > best.step.gainPerDay ||
+        (candidate.gainPerDay === best.step.gainPerDay &&
+          candidate.durationHours < best.step.durationHours)
+      ) {
+        best = { step: candidate, key };
+      }
+    }
+    return best;
+  }
+
+  function findCheapestAvailable(): LabStep | null {
+    let cheapest: LabStep | null = null;
+    for (const [key, queue] of labQueues) {
+      if (running.has(key)) continue;
+      const idx = labNextIdx.get(key)!;
+      if (idx >= queue.length) continue;
+      const candidate = queue[idx];
+      if (!cheapest || candidate.cost < cheapest.cost) {
+        cheapest = candidate;
+      }
+    }
+    return cheapest;
+  }
+
+  for (let iter = 0; iter < 5000; iter++) {
+    if (plans.every((p) => p.length >= 10)) break;
+
+    freeFinishedSlots();
+
+    // Try to assign to each free slot
+    let assigned = false;
+    for (let i = 0; i < 3; i++) {
+      if (slotLabKey[i] !== null) continue;
+      if (plans[i].length >= 10) continue;
+
+      const best = findBestAffordable();
+      if (!best) continue;
+
+      plans[i].push({
+        labStep: best.step,
+        startHour: hour,
+        poolAtStart: pool,
+        idleHoursBefore:
+          plans[i].length === 0 ? 0 : Math.max(0, hour - slotFreeAt[i]),
+      });
+
+      pool -= best.step.cost;
+      slotFreeAt[i] = hour + best.step.durationHours;
+      slotLabKey[i] = best.key;
+      running.add(best.key);
+      labNextIdx.set(best.key, labNextIdx.get(best.key)! + 1);
+      assigned = true;
+    }
+
+    if (assigned) continue;
+
+    // Nothing assigned — advance time
+    let nextFinish = Infinity;
+    for (let i = 0; i < 3; i++) {
+      if (slotLabKey[i] && slotFreeAt[i] > hour) {
+        nextFinish = Math.min(nextFinish, slotFreeAt[i]);
+      }
+    }
+
+    if (nextFinish !== Infinity) {
+      pool += dailyIncome * ((nextFinish - hour) / 24);
+      hour = nextFinish;
+    } else {
+      const cheapest = findCheapestAvailable();
+      if (!cheapest) break;
+      const needed = cheapest.cost - pool;
+      if (needed <= 0) continue;
+      const hoursToWait = (needed / dailyIncome) * 24;
+      hour += hoursToWait;
+      pool += needed;
+    }
+  }
+
+  return plans.map((steps) => ({ steps }));
 }

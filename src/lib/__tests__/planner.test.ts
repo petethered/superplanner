@@ -5,8 +5,9 @@ import {
   parseGain,
   parseLevel,
   parseLabSteps,
+  runSimulation,
 } from "../planner";
-import type { TableData } from "../types";
+import type { LabStep, TableData } from "../types";
 
 describe("parseCost", () => {
   it("parses billions", () => {
@@ -108,5 +109,87 @@ describe("parseLabSteps", () => {
     };
     const steps = parseLabSteps("eHP", data);
     expect(steps).toHaveLength(1);
+  });
+});
+
+function step(
+  type: string,
+  lab: string,
+  level: number,
+  cost: number,
+  durationHours: number,
+  gainPerDay: number,
+): LabStep {
+  return { type, lab, level, cost, durationHours, gainPerDay };
+}
+
+describe("runSimulation", () => {
+  it("assigns highest gain labs to 3 slots", () => {
+    const steps = [
+      step("eHP", "A", 1, 100, 24, 5),
+      step("eHP", "B", 1, 100, 24, 4),
+      step("eHP", "C", 1, 100, 24, 3),
+      step("eHP", "D", 1, 100, 24, 2),
+    ];
+    const result = runSimulation(steps, 1000);
+    const firstLabs = result.map((s) => s.steps[0]?.labStep.lab).sort();
+    expect(firstLabs).toEqual(["A", "B", "C"]);
+  });
+
+  it("respects budget — picks cheap lab when expensive is unaffordable", () => {
+    const steps = [
+      step("eHP", "Expensive", 1, 2000, 24, 10),
+      step("eHP", "Cheap", 1, 100, 24, 5),
+    ];
+    const result = runSimulation(steps, 500);
+    const assigned = result.flatMap((s) => s.steps.map((p) => p.labStep.lab));
+    expect(assigned[0]).toBe("Cheap");
+  });
+
+  it("enforces level ordering within a lab", () => {
+    const steps = [
+      step("eHP", "A", 1, 100, 2, 10),
+      step("eHP", "A", 2, 100, 2, 9),
+    ];
+    const result = runSimulation(steps, 1000);
+    const aSteps = result
+      .flatMap((s) => s.steps)
+      .filter((p) => p.labStep.lab === "A")
+      .sort((a, b) => a.startHour - b.startHour);
+    expect(aSteps[0].labStep.level).toBe(1);
+    expect(aSteps[1].labStep.level).toBe(2);
+    expect(aSteps[1].startHour).toBeGreaterThanOrEqual(
+      aSteps[0].startHour + aSteps[0].labStep.durationHours,
+    );
+  });
+
+  it("prevents same lab running in multiple slots simultaneously", () => {
+    const steps = [
+      step("eHP", "A", 1, 100, 48, 10),
+      step("eHP", "A", 2, 100, 24, 9),
+      step("eHP", "B", 1, 100, 24, 5),
+    ];
+    const result = runSimulation(steps, 1000);
+    expect(result[0].steps[0].labStep.lab).toBe("A");
+    expect(result[1].steps[0].labStep.lab).toBe("B");
+  });
+
+  it("accumulates income to afford expensive labs", () => {
+    const steps = [
+      step("eHP", "A", 1, 500, 24, 10),
+    ];
+    const result = runSimulation(steps, 200);
+    const allSteps = result.flatMap((s) => s.steps);
+    expect(allSteps).toHaveLength(1);
+    expect(allSteps[0].startHour).toBeGreaterThan(0);
+  });
+
+  it("prefers shorter duration when gain is equal", () => {
+    const steps = [
+      step("eHP", "Slow", 1, 100, 48, 5),
+      step("eHP", "Fast", 1, 100, 12, 5),
+    ];
+    const result = runSimulation(steps, 1000);
+    expect(result[0].steps[0].labStep.lab).toBe("Fast");
   });
 });
