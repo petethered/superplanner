@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/planner/",
+  base: "/superplanner/",
   test: {
     environment: "jsdom",
     globals: true,
