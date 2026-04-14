@@ -10,7 +10,7 @@ export function fetchSheet(
     const script = document.createElement("script");
 
     const cleanup = () => {
-      delete (window as Record<string, unknown>)[callbackName];
+      delete (window as unknown as Record<string, unknown>)[callbackName];
       script.remove();
     };
 
@@ -19,7 +19,7 @@ export function fetchSheet(
       reject(new Error(`Timeout loading sheet tab "${tab}"`));
     }, 15_000);
 
-    (window as Record<string, unknown>)[callbackName] = (
+    (window as unknown as Record<string, unknown>)[callbackName] = (
       data: SheetResponse,
     ) => {
       clearTimeout(timer);
