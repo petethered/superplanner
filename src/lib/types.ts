@@ -22,3 +22,30 @@ export interface SheetUrls {
   effectivePaths: string;
   modules: string;
 }
+
+export interface LabStep {
+  type: string;
+  lab: string;
+  level: number;
+  cost: number;
+  durationHours: number;
+  gainPerDay: number;
+}
+
+export interface PlannerConfig {
+  enabledTypes: string[];
+  dailyIncome: number;
+  dailyIncomeSuffix: string;
+  dailyIncomeValue: number;
+}
+
+export interface PlannedStep {
+  labStep: LabStep;
+  startHour: number;
+  poolAtStart: number;
+  idleHoursBefore: number;
+}
+
+export interface SlotPlan {
+  steps: PlannedStep[];
+}
