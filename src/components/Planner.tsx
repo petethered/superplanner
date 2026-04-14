@@ -3,7 +3,7 @@ import { Calculator } from "lucide-react";
 import { parseLabSteps, runSimulation } from "../lib/planner";
 import { buildLabColorMap } from "../lib/colors";
 import { GanttChart } from "./GanttChart";
-import type { TableData, PlannerConfig, SlotPlan } from "../lib/types";
+import type { TableData, PlannerConfig, SimulationResult } from "../lib/types";
 
 const ALL_TYPES = ["eHP", "regen", "eDAMAGE", "eECON", "SHARD PATH"];
 
@@ -91,7 +91,7 @@ interface PlannerProps {
 
 export function Planner({ sheets }: PlannerProps) {
   const [config, setConfig] = useState<PlannerConfig>(loadConfig);
-  const [results, setResults] = useState<SlotPlan[] | null>(null);
+  const [results, setResults] = useState<SimulationResult | null>(null);
   const labColors = useMemo(() => buildLabColorMap(sheets), [sheets]);
 
   function updateConfig(patch: Partial<PlannerConfig>) {
@@ -125,12 +125,12 @@ export function Planner({ sheets }: PlannerProps) {
     });
 
     if (allSteps.length === 0) {
-      setResults([]);
+      setResults({ slots: [], finalDailyIncome: config.dailyIncome });
       return;
     }
 
-    const plans = runSimulation(allSteps, config.dailyIncome, config.minDays);
-    setResults(plans);
+    const result = runSimulation(allSteps, config.dailyIncome, config.minDays);
+    setResults(result);
   }
 
   const noTypesSelected = config.enabledTypes.length === 0;
@@ -222,7 +222,7 @@ export function Planner({ sheets }: PlannerProps) {
           </p>
         )}
 
-        {results && results.length === 0 && (
+        {results && results.slots.length === 0 && (
           <p className="text-center text-amber-400 text-xs font-mono-data py-8">
             No labs available. Check your category selections.
           </p>
@@ -230,17 +230,17 @@ export function Planner({ sheets }: PlannerProps) {
 
         {results &&
           results.length > 0 &&
-          results.every((s) => s.steps.length === 0) && (
+          results.slots.every((s) => s.steps.length === 0) && (
             <p className="text-center text-amber-400 text-xs font-mono-data py-8">
               No affordable labs with current income. Try increasing daily
               income.
             </p>
           )}
 
-        {results && results.some((s) => s.steps.length > 0) && (
+        {results && results.slots.some((s) => s.steps.length > 0) && (
           <>
           <div className="flex flex-wrap gap-4">
-            {results.map((slot, i) => (
+            {results.slots.map((slot, i) => (
               <div
                 key={i}
                 className="flex-1 min-w-[200px] bg-slate-800/30 rounded border border-slate-700/30"
@@ -273,26 +273,24 @@ export function Planner({ sheets }: PlannerProps) {
                             </div>
                           )}
                           <div
-                            className="px-3 py-1.5 flex items-start gap-2"
+                            className="px-3 py-1.5 grid grid-cols-[16px_1fr_auto_auto_auto] gap-x-2 items-center"
                             style={bg ? { backgroundColor: bg } : undefined}
                           >
-                            <span className="text-[10px] text-slate-600 font-mono-data w-4 shrink-0 pt-0.5">
+                            <span className="text-[10px] text-slate-600 font-mono-data">
                               {j + 1}.
                             </span>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs text-slate-300 font-mono-data truncate">
-                                {planned.labStep.lab}
-                              </div>
-                              <div className="flex gap-3 text-[10px] text-slate-500 font-mono-data">
-                                <span>lvl {planned.labStep.level}</span>
-                                <span>
-                                  {planned.labStep.gainPerDay.toFixed(2)}%/d
-                                </span>
-                                <span>
-                                  {formatHours(planned.labStep.durationHours)}
-                                </span>
-                              </div>
-                            </div>
+                            <span className="text-xs text-slate-300 font-mono-data truncate">
+                              {planned.labStep.lab} L{planned.labStep.level}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono-data">
+                              {formatCost(planned.labStep.cost)}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono-data">
+                              {formatHours(planned.labStep.durationHours)}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono-data">
+                              {planned.labStep.gainPerDay.toFixed(2)}%/d
+                            </span>
                           </div>
                         </div>
                       );
@@ -303,7 +301,7 @@ export function Planner({ sheets }: PlannerProps) {
             ))}
           </div>
           {(() => {
-            const summary = computeSummary(results);
+            const summary = computeSummary(results.slots);
             return (
               <div className="mt-4 bg-slate-800/30 rounded border border-slate-700/30 overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-700/30">
@@ -316,6 +314,14 @@ export function Planner({ sheets }: PlannerProps) {
                     <div className="text-[10px] text-slate-500 font-mono-data uppercase tracking-wider mb-1">Total Spend</div>
                     <div className="text-sm text-slate-200 font-mono-data">{formatCost(summary.totalCost)}</div>
                   </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-mono-data uppercase tracking-wider mb-1">Income/Day</div>
+                    <div className="text-sm text-slate-200 font-mono-data">
+                      {formatCost(config.dailyIncome)}
+                      <span className="text-slate-500 mx-1">&rarr;</span>
+                      <span className="text-emerald-400">{formatCost(results.finalDailyIncome)}</span>
+                    </div>
+                  </div>
                   {Object.entries(summary.gainByType).map(([type, gain]) => (
                     <div key={type}>
                       <div className="text-[10px] text-slate-500 font-mono-data uppercase tracking-wider mb-1">{type}</div>
@@ -326,7 +332,7 @@ export function Planner({ sheets }: PlannerProps) {
               </div>
             );
           })()}
-          <GanttChart results={results} labColors={labColors} />
+          <GanttChart results={results.slots} labColors={labColors} />
           </>
         )}
       </div>

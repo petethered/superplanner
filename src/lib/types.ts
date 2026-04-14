@@ -50,3 +50,8 @@ export interface PlannedStep {
 export interface SlotPlan {
   steps: PlannedStep[];
 }
+
+export interface SimulationResult {
+  slots: SlotPlan[];
+  finalDailyIncome: number;
+}

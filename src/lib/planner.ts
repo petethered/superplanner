@@ -1,4 +1,4 @@
-import type { LabStep, SlotPlan, PlannedStep, TableData } from "./types";
+import type { LabStep, SlotPlan, PlannedStep, SimulationResult, TableData } from "./types";
 
 const COST_SUFFIXES: Record<string, number> = {
   B: 1e9,
@@ -62,7 +62,7 @@ export function runSimulation(
   allSteps: LabStep[],
   dailyIncome: number,
   minDays = 10,
-): SlotPlan[] {
+): SimulationResult {
   const minHours = minDays * 24;
   // Build lab queues grouped by unique lab identity, sorted by level
   const labQueues = new Map<string, LabStep[]>();
@@ -88,15 +88,23 @@ export function runSimulation(
   const plans: PlannedStep[][] = [[], [], []];
   const slotFreeAt = [0, 0, 0];
   const slotLabKey: (string | null)[] = [null, null, null];
+  const slotStep: (LabStep | null)[] = [null, null, null];
 
   let hour = 0;
   let pool = dailyIncome;
+  let currentDailyIncome = dailyIncome;
 
   function freeFinishedSlots(): void {
     for (let i = 0; i < 3; i++) {
       if (slotLabKey[i] && slotFreeAt[i] <= hour) {
+        // If completed lab is eECON, boost daily income
+        if (slotStep[i] && slotStep[i]!.type === "eECON") {
+          const gain = (slotStep[i]!.gainPerDay / 24) * slotStep[i]!.durationHours;
+          currentDailyIncome *= 1 + gain / 100;
+        }
         running.delete(slotLabKey[i]!);
         slotLabKey[i] = null;
+        slotStep[i] = null;
       }
     }
   }
@@ -160,6 +168,7 @@ export function runSimulation(
       pool -= best.step.cost;
       slotFreeAt[i] = hour + best.step.durationHours;
       slotLabKey[i] = best.key;
+      slotStep[i] = best.step;
       running.add(best.key);
       labNextIdx.set(best.key, labNextIdx.get(best.key)! + 1);
       assigned = true;
@@ -176,18 +185,21 @@ export function runSimulation(
     }
 
     if (nextFinish !== Infinity) {
-      pool += dailyIncome * ((nextFinish - hour) / 24);
+      pool += currentDailyIncome * ((nextFinish - hour) / 24);
       hour = nextFinish;
     } else {
       const cheapest = findCheapestAvailable();
       if (!cheapest) break;
       const needed = cheapest.cost - pool;
       if (needed <= 0) continue;
-      const hoursToWait = (needed / dailyIncome) * 24;
+      const hoursToWait = (needed / currentDailyIncome) * 24;
       hour += hoursToWait;
       pool += needed;
     }
   }
 
-  return plans.map((steps) => ({ steps }));
+  return {
+    slots: plans.map((steps) => ({ steps })),
+    finalDailyIncome: currentDailyIncome,
+  };
 }
