@@ -4,6 +4,7 @@ import { SetupPage } from "./components/SetupPage";
 import { Navbar } from "./components/Navbar";
 import { SettingsModal } from "./components/SettingsModal";
 import { TableGrid } from "./components/TableGrid";
+import { Planner } from "./components/Planner";
 import { Footer } from "./components/Footer";
 import {
   getUrls,
@@ -68,7 +69,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col">
       <Navbar
         onSync={handleSync}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -77,23 +78,40 @@ export default function App() {
       />
       <main className="flex-1">
         {loading && !sheets && (
-          <div className="flex items-center justify-center gap-2 text-gray-500 p-12">
-            <RefreshCw className="w-5 h-5 animate-spin" />
-            <span>Loading sheets...</span>
+          <div className="flex items-center justify-center gap-3 text-slate-500 p-16">
+            <RefreshCw className="w-5 h-5 animate-spin text-cyan-500" />
+            <span className="font-mono-data text-sm tracking-wide uppercase">
+              Loading data...
+            </span>
           </div>
         )}
         {error && (
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={handleSync}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Retry
-            </button>
+          <div className="flex flex-col items-center justify-center p-16 text-center">
+            <p className="text-red-400 text-sm font-mono-data mb-4">{error}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleSync}
+                className="px-5 py-2 text-sm font-bold tracking-wider uppercase bg-cyan-600 text-white rounded hover:bg-cyan-500 transition-all"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="px-5 py-2 text-sm font-bold tracking-wider uppercase text-slate-400 border border-slate-700 rounded hover:bg-slate-800 hover:text-slate-200 transition-all"
+              >
+                Edit URLs
+              </button>
+            </div>
           </div>
         )}
-        {sheets && <TableGrid sheets={sheets} />}
+        {sheets && (
+          <>
+            <div className="px-6 pt-6">
+              <Planner sheets={sheets} />
+            </div>
+            <TableGrid sheets={sheets} />
+          </>
+        )}
       </main>
       <Footer lastSync={lastSync} />
       {settingsOpen && (
