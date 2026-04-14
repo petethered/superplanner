@@ -24,6 +24,14 @@ export function fetchSheet(
     ) => {
       clearTimeout(timer);
       cleanup();
+      if (data.status !== "ok" || !data.table) {
+        const msg =
+          (data as Record<string, unknown>).errors
+            ? JSON.stringify((data as Record<string, unknown>).errors)
+            : `Sheet returned status "${data.status}"`;
+        reject(new Error(`Error loading "${tab}": ${msg}`));
+        return;
+      }
       resolve(data);
     };
 
@@ -41,14 +49,11 @@ export function fetchSheet(
 export function extractTableData(response: SheetResponse): TableData {
   const { cols, rows } = response.table;
   const colStart = 5; // F
-  const colEnd = 10; // K
-  const rowStart = 2; // row 3 (0-indexed)
+  const colEnd = 9; // J
+  const rowStart = 3; // row 4 (0-indexed)
   const rowEnd = 43; // row 44
 
-  const headers: string[] = [];
-  for (let c = colStart; c <= colEnd; c++) {
-    headers.push(cols[c]?.label || `Col ${String.fromCharCode(65 + c)}`);
-  }
+  const headers = ["LAB", "LEVEL", "COST", "DURATION", "% GAIN"];
 
   const tableRows: string[][] = [];
   for (let r = rowStart; r <= rowEnd && r < rows.length; r++) {
@@ -58,7 +63,9 @@ export function extractTableData(response: SheetResponse): TableData {
       const cell = row?.[c];
       values.push(cell?.f ?? String(cell?.v ?? ""));
     }
-    tableRows.push(values);
+    if (!values.every((v) => v === "")) {
+      tableRows.push(values);
+    }
   }
 
   return { headers, rows: tableRows };

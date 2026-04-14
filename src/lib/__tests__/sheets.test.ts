@@ -22,43 +22,42 @@ function makeResponse(numCols: number, numRows: number): SheetResponse {
 }
 
 describe("extractTableData", () => {
-  it("extracts headers from columns F-K (indices 5-10)", () => {
+  it("uses hardcoded headers", () => {
     const response = makeResponse(12, 50);
     const data = extractTableData(response);
     expect(data.headers).toEqual([
-      "Header F",
-      "Header G",
-      "Header H",
-      "Header I",
-      "Header J",
-      "Header K",
+      "LAB",
+      "LEVEL",
+      "COST",
+      "DURATION",
+      "% GAIN",
     ]);
   });
 
-  it("extracts rows 3-44 (indices 2-43)", () => {
+  it("extracts rows 4-44 (indices 3-43)", () => {
     const response = makeResponse(12, 50);
     const data = extractTableData(response);
-    expect(data.rows).toHaveLength(42);
-    expect(data.rows[0][0]).toBe("R2C5");
-    expect(data.rows[41][0]).toBe("R43C5");
+    expect(data.rows).toHaveLength(41);
+    expect(data.rows[0][0]).toBe("R3C5");
+    expect(data.rows[40][0]).toBe("R43C5");
   });
 
   it("handles fewer rows than expected", () => {
     const response = makeResponse(12, 10);
     const data = extractTableData(response);
-    expect(data.rows).toHaveLength(8); // rows at indices 2-9
+    expect(data.rows).toHaveLength(7); // rows at indices 3-9
   });
 
   it("uses formatted value (f) over raw value (v)", () => {
     const response = makeResponse(12, 5);
-    response.table.rows[2].c[5] = { v: 1234.5, f: "1,234.50" };
+    response.table.rows[3].c[5] = { v: 1234.5, f: "1,234.50" };
     const data = extractTableData(response);
     expect(data.rows[0][0]).toBe("1,234.50");
   });
 
   it("handles null cells gracefully", () => {
     const response = makeResponse(12, 5);
-    response.table.rows[2].c[5] = null;
+    response.table.rows[3].c[5] = null;
     const data = extractTableData(response);
     expect(data.rows[0][0]).toBe("");
   });
