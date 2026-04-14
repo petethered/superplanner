@@ -6,21 +6,24 @@ interface SheetTableProps {
   data: TableData;
   labColors?: Record<string, string>;
   labColumn?: number;
+  headerExtra?: React.ReactNode;
 }
 
 const ROW_OPTIONS = [10, 20, 50, "all"] as const;
 type RowLimit = (typeof ROW_OPTIONS)[number];
 
-export function SheetTable({ title, data, labColors, labColumn = 0 }: SheetTableProps) {
+export function SheetTable({ title, data, labColors, labColumn = 0, headerExtra }: SheetTableProps) {
   const [limit, setLimit] = useState<RowLimit>(10);
   const visibleRows = limit === "all" ? data.rows : data.rows.slice(0, limit);
 
   return (
     <div className="bg-slate-900/80 rounded-lg border border-slate-700/40 overflow-hidden card-shimmer animate-fade-up">
-      <div className="px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/40 flex items-center justify-between">
+      <div className="px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/40 flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 className="font-display text-xs font-bold tracking-[0.15em] text-cyan-300">
           {title}
         </h2>
+        {headerExtra}
+        <div className="ml-auto">
         <select
           value={String(limit)}
           onChange={(e) => {
@@ -35,6 +38,7 @@ export function SheetTable({ title, data, labColors, labColumn = 0 }: SheetTable
             </option>
           ))}
         </select>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs font-mono-data">

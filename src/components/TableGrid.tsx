@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { SheetTable } from "./SheetTable";
 import { buildLabColorMap } from "../lib/colors";
 import type { TableData } from "../lib/types";
@@ -29,10 +29,14 @@ function parsePercent(value: string): number {
   return isNaN(num) ? -Infinity : num;
 }
 
-function buildCombinedTable(sheets: Record<string, TableData>): TableData {
+function buildCombinedTable(
+  sheets: Record<string, TableData>,
+  enabledKeys: Set<string>,
+): TableData {
   const rows: string[][] = [];
 
   for (const { key } of TABLE_CONFIG) {
+    if (!enabledKeys.has(key)) continue;
     const sheet = sheets[key];
     if (!sheet) continue;
     for (const row of sheet.rows) {
@@ -50,13 +54,55 @@ function buildCombinedTable(sheets: Record<string, TableData>): TableData {
 }
 
 export function TableGrid({ sheets }: TableGridProps) {
-  const combined = useMemo(() => buildCombinedTable(sheets), [sheets]);
+  const [enabledKeys, setEnabledKeys] = useState<Set<string>>(
+    () => new Set(TABLE_CONFIG.map((t) => t.key)),
+  );
+
+  function toggleKey(key: string) {
+    setEnabledKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  const combined = useMemo(
+    () => buildCombinedTable(sheets, enabledKeys),
+    [sheets, enabledKeys],
+  );
   const labColors = useMemo(() => buildLabColorMap(sheets), [sheets]);
 
   return (
     <div className="p-6 w-full space-y-6">
       <div className="w-full">
-        <SheetTable title="Combined" data={combined} labColors={labColors} labColumn={1} />
+        <SheetTable
+          title="Combined"
+          data={combined}
+          labColors={labColors}
+          labColumn={1}
+          headerExtra={
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {TABLE_CONFIG.map(({ key, label }) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-1.5 cursor-pointer text-[10px]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={enabledKeys.has(key)}
+                    onChange={() => toggleKey(key)}
+                    className="accent-cyan-500"
+                  />
+                  <span className="text-slate-400 font-mono-data">{label}</span>
+                </label>
+              ))}
+            </div>
+          }
+        />
       </div>
       <div className="flex flex-wrap gap-6 justify-center">
         {TABLE_CONFIG.map(
