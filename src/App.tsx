@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { RefreshCw } from "lucide-react";
 import { SetupPage } from "./components/SetupPage";
+import { Navbar } from "./components/Navbar";
+import { SettingsModal } from "./components/SettingsModal";
 import {
   getUrls,
   setUrls,
@@ -10,15 +13,19 @@ import {
 import { fetchAndCacheAll, loadFromCache } from "./lib/sheets";
 import type { SheetUrls, TableData } from "./lib/types";
 
+const SIX_HOURS = 6 * 60 * 60 * 1000;
+
 export default function App() {
   const [urls, setUrlsState] = useState<SheetUrls | null>(getUrls);
   const [sheets, setSheets] = useState<Record<string, TableData> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSync, setLastSyncState] = useState<number | null>(getLastSync);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const effectivePathsId = urls ? extractSheetId(urls.effectivePaths) : null;
   const modulesId = urls ? extractSheetId(urls.modules) : null;
+  const isStale = lastSync ? Date.now() - lastSync > SIX_HOURS : false;
 
   const handleSync = useCallback(async () => {
     if (!effectivePathsId || !modulesId) return;
@@ -51,6 +58,7 @@ export default function App() {
     clearAllCache();
     setSheets(null);
     setLastSyncState(null);
+    setSettingsOpen(false);
   }
 
   if (!urls) {
@@ -59,14 +67,43 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <h1 className="text-xl font-bold text-gray-900">SuperPlanner</h1>
-      </header>
+      <Navbar
+        onSync={handleSync}
+        onOpenSettings={() => setSettingsOpen(true)}
+        loading={loading}
+        isStale={isStale}
+      />
       <main className="flex-1 flex items-center justify-center p-6">
-        {loading && <p className="text-gray-500">Loading...</p>}
-        {error && <p className="text-red-600">{error}</p>}
-        {sheets && <p className="text-green-600">Data loaded! ({Object.keys(sheets).length} tables)</p>}
+        {loading && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+            <span>Loading sheets...</span>
+          </div>
+        )}
+        {error && (
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={handleSync}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!loading && !error && sheets && (
+          <p className="text-green-600">
+            Data loaded! ({Object.keys(sheets).length} tables)
+          </p>
+        )}
       </main>
+      {settingsOpen && (
+        <SettingsModal
+          urls={urls}
+          onSave={handleSaveUrls}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }
