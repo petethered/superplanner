@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Calculator } from "lucide-react";
 import { parseLabSteps, runSimulation } from "../lib/planner";
 import { buildLabColorMap } from "../lib/colors";
+import { GanttChart } from "./GanttChart";
 import type { TableData, PlannerConfig, SlotPlan } from "../lib/types";
 
 const ALL_TYPES = ["eHP", "regen", "eDAMAGE", "eECON", "SHARD PATH"];
@@ -186,6 +187,7 @@ export function Planner({ sheets }: PlannerProps) {
           )}
 
         {results && results.some((s) => s.steps.length > 0) && (
+          <>
           <div className="flex flex-wrap gap-4">
             {results.map((slot, i) => (
               <div
@@ -244,6 +246,8 @@ export function Planner({ sheets }: PlannerProps) {
               </div>
             ))}
           </div>
+          <GanttChart results={results} labColors={labColors} />
+          </>
         )}
       </div>
     </div>
