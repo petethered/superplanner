@@ -1,0 +1,31 @@
+{
+  "name": "planner",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "lucide-react": "^1.8.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^29.0.2",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^4.1.4"
+  }
+}
