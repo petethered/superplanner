@@ -98,21 +98,29 @@ interface SheetTab {
 }
 
 export function getSheetTabs(
-  effectivePathsId: string,
-  modulesId: string,
+  effectivePathsId: string | null,
+  modulesId: string | null,
 ): SheetTab[] {
-  return [
-    { key: "eHP", label: "eHP", sheetId: effectivePathsId, tab: "eHP" },
-    { key: "regen", label: "regen", sheetId: effectivePathsId, tab: "eHP", colStart: 27, colEnd: 31 },
-    { key: "eDamage", label: "eDamage", sheetId: effectivePathsId, tab: "eDamage" },
-    { key: "eEcon", label: "eEcon", sheetId: effectivePathsId, tab: "eEcon" },
-    { key: "shardPath", label: "Shard Path", sheetId: modulesId, tab: "Shard Path" },
-  ];
+  const tabs: SheetTab[] = [];
+  if (effectivePathsId) {
+    tabs.push(
+      { key: "eHP", label: "eHP", sheetId: effectivePathsId, tab: "eHP" },
+      { key: "regen", label: "regen", sheetId: effectivePathsId, tab: "eHP", colStart: 27, colEnd: 31 },
+      { key: "eDamage", label: "eDamage", sheetId: effectivePathsId, tab: "eDamage" },
+      { key: "eEcon", label: "eEcon", sheetId: effectivePathsId, tab: "eEcon" },
+    );
+  }
+  if (modulesId) {
+    tabs.push(
+      { key: "shardPath", label: "Shard Path", sheetId: modulesId, tab: "Shard Path" },
+    );
+  }
+  return tabs;
 }
 
 export async function fetchAndCacheAll(
-  effectivePathsId: string,
-  modulesId: string,
+  effectivePathsId: string | null,
+  modulesId: string | null,
 ): Promise<Record<string, TableData>> {
   const tabs = getSheetTabs(effectivePathsId, modulesId);
   const results: Record<string, TableData> = {};
@@ -142,10 +150,16 @@ export async function fetchAndCacheAll(
   return results;
 }
 
-export function loadFromCache(): Record<string, TableData> | null {
-  const keys = ["eHP", "regen", "eDamage", "eEcon", "shardPath"];
-  const results: Record<string, TableData> = {};
+export function loadFromCache(
+  effectivePathsId: string | null,
+  modulesId: string | null,
+): Record<string, TableData> | null {
+  const keys: string[] = [];
+  if (effectivePathsId) keys.push("eHP", "regen", "eDamage", "eEcon");
+  if (modulesId) keys.push("shardPath");
+  if (keys.length === 0) return null;
 
+  const results: Record<string, TableData> = {};
   for (const key of keys) {
     const cached = getCached(key);
     if (!cached) return null;

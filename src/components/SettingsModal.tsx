@@ -16,15 +16,21 @@ export function SettingsModal({ urls, onSave, onClose }: SettingsModalProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!extractSheetId(effectivePaths)) {
+    const hasEP = effectivePaths.trim() !== "";
+    const hasMod = modules.trim() !== "";
+    if (!hasEP && !hasMod) {
+      setError("At least one URL is required");
+      return;
+    }
+    if (hasEP && !extractSheetId(effectivePaths)) {
       setError("Invalid Effective Paths URL");
       return;
     }
-    if (!extractSheetId(modules)) {
+    if (hasMod && !extractSheetId(modules)) {
       setError("Invalid Modules URL");
       return;
     }
-    onSave({ effectivePaths, modules });
+    onSave({ effectivePaths: effectivePaths.trim(), modules: modules.trim() });
   }
 
   return (
@@ -55,7 +61,6 @@ export function SettingsModal({ urls, onSave, onClose }: SettingsModalProps) {
                   setError("");
                 }}
                 className="flex-1 min-w-0 px-3 py-2.5 bg-slate-800/70 border border-slate-700 rounded text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors font-mono-data"
-                required
               />
               {effectivePaths && (
                 <button
@@ -82,7 +87,6 @@ export function SettingsModal({ urls, onSave, onClose }: SettingsModalProps) {
                   setError("");
                 }}
                 className="flex-1 min-w-0 px-3 py-2.5 bg-slate-800/70 border border-slate-700 rounded text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors font-mono-data"
-                required
               />
               {modules && (
                 <button

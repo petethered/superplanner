@@ -14,15 +14,21 @@ export function SetupPage({ onSave }: SetupPageProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!extractSheetId(effectivePaths)) {
+    const hasEP = effectivePaths.trim() !== "";
+    const hasMod = modules.trim() !== "";
+    if (!hasEP && !hasMod) {
+      setError("At least one Google Sheets URL is required.");
+      return;
+    }
+    if (hasEP && !extractSheetId(effectivePaths)) {
       setError("Invalid Effective Paths URL. Must be a Google Sheets link.");
       return;
     }
-    if (!extractSheetId(modules)) {
+    if (hasMod && !extractSheetId(modules)) {
       setError("Invalid Modules URL. Must be a Google Sheets link.");
       return;
     }
-    onSave({ effectivePaths, modules });
+    onSave({ effectivePaths: effectivePaths.trim(), modules: modules.trim() });
   }
 
   return (
@@ -35,8 +41,9 @@ export function SetupPage({ onSave }: SetupPageProps) {
           </h1>
         </div>
         <p className="text-sm text-slate-400 mb-6 leading-relaxed">
-          Connect your Google Sheets data sources. Both sheets must be shared
-          with &ldquo;Anyone with the link&rdquo; viewer access.
+          Connect your Google Sheets data sources. At least one URL is required.
+          Sheets must be shared with &ldquo;Anyone with the link&rdquo; viewer
+          access.
         </p>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -52,7 +59,6 @@ export function SetupPage({ onSave }: SetupPageProps) {
               }}
               placeholder="https://docs.google.com/spreadsheets/d/..."
               className="w-full px-3 py-2.5 bg-slate-800/70 border border-slate-700 rounded text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors font-mono-data"
-              required
             />
           </div>
           <div>
@@ -68,7 +74,6 @@ export function SetupPage({ onSave }: SetupPageProps) {
               }}
               placeholder="https://docs.google.com/spreadsheets/d/..."
               className="w-full px-3 py-2.5 bg-slate-800/70 border border-slate-700 rounded text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors font-mono-data"
-              required
             />
           </div>
           {error && (
