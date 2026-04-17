@@ -34,7 +34,7 @@ export function SettingsModal({ urls, onSave, onClose }: SettingsModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
       <div className="animate-fade-up bg-slate-900 border border-slate-700/50 rounded-lg shadow-2xl shadow-black/50 p-6 max-w-md w-full">
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-sm font-bold tracking-widest uppercase text-cyan-50">

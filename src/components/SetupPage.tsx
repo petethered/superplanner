@@ -33,7 +33,7 @@ export function SetupPage({ onSave }: SetupPageProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="animate-fade-up border border-cyan-800/40 rounded-lg bg-slate-900/80 backdrop-blur-sm p-8 max-w-md w-full shadow-2xl shadow-cyan-950/30 card-shimmer">
+      <div className="animate-fade-up border border-cyan-800/40 rounded-lg bg-slate-900/80 p-8 max-w-md w-full shadow-2xl shadow-cyan-950/30 card-shimmer">
         <div className="flex items-center gap-3 mb-1">
           <Crosshair className="w-7 h-7 text-cyan-400" />
           <h1 className="font-display text-xl font-bold tracking-wider text-cyan-50 uppercase">

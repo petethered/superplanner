@@ -14,7 +14,7 @@ export function Navbar({
   isStale,
 }: NavbarProps) {
   return (
-    <nav className="bg-slate-900/90 backdrop-blur-sm border-b border-slate-700/50 px-4 py-3">
+    <nav className="bg-slate-900/90 border-b border-slate-700/50 px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Crosshair className="w-5 h-5 text-cyan-400" />
