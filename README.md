@@ -2,7 +2,7 @@
 
 **Live site:** [effectivepathplanner.com](https://effectivepathplanner.com)
 
-A companion planner for the idle game **[The Tower](https://thetower.lol/)**.
+A companion planner for the idle game **[The Tower](https://www.techtreegames.com/)**.
 Pull the community **Effective Paths** Google Sheets, browse the upgrade
 tables, and run a 3-slot scheduling simulator that recommends which labs to
 research next given your current daily income.
