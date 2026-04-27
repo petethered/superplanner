@@ -1,3 +1,26 @@
+// =============================================================================
+// planner.test.ts — unit tests for the simulator and its parsing helpers.
+//
+// Coverage map:
+//   - parseCost        — SI suffix expansion, separator handling
+//   - parseDuration    — d/h/m component parsing
+//   - parseGain        — % stripping with embedded thin-space separators
+//   - parseLevel       — integer extraction from "lvl N"
+//   - parseLabSteps    — TableData → LabStep[] including blank-row skip
+//   - runSimulation    — the core scheduler:
+//       * highest-gain assignment to all 3 slots
+//       * budget reservation under tight money
+//       * level ordering within a lab
+//       * "same lab in 2 slots simultaneously" prevention
+//       * income-accumulation wait when nothing is affordable
+//       * tie-breaking by shorter duration
+//       * minDays horizon enforcement
+//       * eECON income compounding
+//
+// Helper `step()` at the bottom builds a LabStep without typing all six
+// fields; callers pass them positionally.
+// =============================================================================
+
 import { describe, it, expect } from "vitest";
 import {
   parseCost,

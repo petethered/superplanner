@@ -1,3 +1,15 @@
+// =============================================================================
+// sheets.test.ts — covers `extractTableData`, the gviz response slicer.
+//
+// We do NOT test `fetchSheet` here — that uses JSONP via real DOM script
+// injection and would require a fairly involved network mock. It's
+// effectively integration-tested by manual use against real spreadsheets.
+//
+// `makeResponse(numCols, numRows)` is a small factory that builds a
+// canonical SheetResponse with cell values like "R3C5" so we can assert
+// exact extraction coordinates.
+// =============================================================================
+
 import { describe, it, expect } from "vitest";
 import { extractTableData } from "../sheets";
 import type { SheetResponse } from "../types";

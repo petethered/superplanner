@@ -1,3 +1,18 @@
+// =============================================================================
+// storage.test.ts — covers the localStorage adapter.
+//
+// Each test starts with a clean localStorage via `beforeEach`. The vitest
+// jsdom environment provides a real implementation, so this is a faithful
+// round-trip test, not a mock.
+//
+// Coverage map:
+//   - extractSheetId — edit URL, gviz URL, and rejection for non-sheets URLs
+//   - URL storage    — null-when-empty, persistence round-trip
+//   - cache          — null-when-empty, write+read with timestamp,
+//                      `clearAllCache` removes entries AND the lastSync
+//   - last sync      — null-when-empty, persistence round-trip
+// =============================================================================
+
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   getUrls,
@@ -10,6 +25,8 @@ import {
   extractSheetId,
 } from "../storage";
 
+// Reset between tests — localStorage state would otherwise leak across
+// tests via the shared jsdom global.
 beforeEach(() => {
   localStorage.clear();
 });

@@ -1,11 +1,29 @@
+// =============================================================================
+// SettingsModal.tsx — modal for editing the configured sheet URLs after
+// initial setup.
+//
+// Mirrors SetupPage's validation rules (at least one URL required, each
+// non-empty URL must contain a parseable sheet ID). The key difference is
+// that this modal pre-populates from the existing `urls` prop and adds
+// "open in new tab" buttons next to each input so the user can quickly
+// jump to their actual spreadsheet.
+//
+// Caller (App.tsx) handles the cache-clearing side effect when URLs
+// change. This component just collects + validates the input.
+// =============================================================================
+
 import { useState } from "react";
 import { X, ExternalLink } from "lucide-react";
 import type { SheetUrls } from "../lib/types";
 import { extractSheetId } from "../lib/storage";
 
 interface SettingsModalProps {
+  /** Current URLs, used to seed the inputs. */
   urls: SheetUrls;
+  /** Called with the trimmed updated URLs once validation passes. App.tsx
+   *  also closes the modal via this path. */
   onSave: (urls: SheetUrls) => void;
+  /** Closes the modal without persisting changes. */
   onClose: () => void;
 }
 
@@ -18,6 +36,7 @@ export function SettingsModal({ urls, onSave, onClose }: SettingsModalProps) {
     e.preventDefault();
     const hasEP = effectivePaths.trim() !== "";
     const hasMod = modules.trim() !== "";
+    // Same all-blank guard as SetupPage — at least one URL is required.
     if (!hasEP && !hasMod) {
       setError("At least one URL is required");
       return;
@@ -34,6 +53,7 @@ export function SettingsModal({ urls, onSave, onClose }: SettingsModalProps) {
   }
 
   return (
+    // Full-viewport backdrop. z-50 puts it above the navbar/footer.
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
       <div className="animate-fade-up bg-slate-900 border border-slate-700/50 rounded-lg shadow-2xl shadow-black/50 p-6 max-w-md w-full">
         <div className="flex items-center justify-between mb-5">
@@ -62,6 +82,10 @@ export function SettingsModal({ urls, onSave, onClose }: SettingsModalProps) {
                 }}
                 className="flex-1 min-w-0 px-3 py-2.5 bg-slate-800/70 border border-slate-700 rounded text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors font-mono-data"
               />
+              {/* Quick-jump button: opens the configured sheet in a new
+                  tab. Only shown when the input has a value. Uses
+                  window.open rather than a real <a> so we don't have to
+                  conditionally render two different element types. */}
               {effectivePaths && (
                 <button
                   type="button"

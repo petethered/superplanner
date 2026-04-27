@@ -1,3 +1,34 @@
+// =============================================================================
+// App.tsx — top-level component and orchestrator.
+//
+// Responsibilities (in order of importance):
+//   1. Decide whether to show the SetupPage (no URLs configured) or the main
+//      planner UI (URLs are present, even partially).
+//   2. Drive the data lifecycle: bootstrap from cache on mount, otherwise
+//      trigger `fetchAndCacheAll`; expose `handleSync` for the navbar's
+//      manual resync button.
+//   3. Surface errors and "missing one of two URLs" warnings in-line.
+//   4. Manage the SettingsModal open/closed state and apply URL changes
+//      (which also clears cache so the next sync pulls fresh data).
+//
+// State map:
+//   - urls          — SheetUrls or null. Persisted via storage.ts; null
+//                     means "first-run, show SetupPage".
+//   - sheets        — keyed map of TableData. Hydrated from cache or fetch.
+//                     Null while loading on first launch.
+//   - loading       — true during a sync operation. Drives the navbar
+//                     spinner and the page-level "Loading..." state.
+//   - error         — most recent sync error, displayed with retry buttons.
+//   - lastSync      — epoch ms of most recent successful sync. Drives the
+//                     footer label and the navbar "stale" amber glow.
+//   - settingsOpen  — modal visibility.
+//
+// Note: the storage keys (sp_urls, sp_cache_*, sp_last_sync) use the legacy
+// "sp_" prefix from the SuperPlanner naming era and MUST stay stable so
+// existing users don't lose their config on rename/release. Don't rename
+// without writing a migration step here.
+// =============================================================================
+
 import { useState, useEffect, useCallback } from "react";
 import { RefreshCw, AlertTriangle, Settings } from "lucide-react";
 import { SetupPage } from "./components/SetupPage";
@@ -16,9 +47,14 @@ import {
 import { fetchAndCacheAll, loadFromCache } from "./lib/sheets";
 import type { SheetUrls, TableData } from "./lib/types";
 
+// Threshold for the "stale data" indicator in the Navbar. Anything older
+// than this paints the resync button amber via `stale-glow`.
 const SIX_HOURS = 6 * 60 * 60 * 1000;
 
 export default function App() {
+  // Initial state pulls from localStorage synchronously via the lazy
+  // initializer form (`useState(getUrls)`), so we render the right view
+  // (SetupPage vs. main app) on the very first paint with no flash.
   const [urls, setUrlsState] = useState<SheetUrls | null>(getUrls);
   const [sheets, setSheets] = useState<Record<string, TableData> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,6 +62,10 @@ export default function App() {
   const [lastSync, setLastSyncState] = useState<number | null>(getLastSync);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Derived: parsed sheet IDs and "is anything configured" flags.
+  // `extractSheetId` returns null when the URL is empty or doesn't look
+  // like a Google Sheets link — so `missingEffectivePaths` etc. distinguish
+  // "user typed something garbage" from "user left it blank".
   const effectivePathsId = urls?.effectivePaths ? extractSheetId(urls.effectivePaths) : null;
   const modulesId = urls?.modules ? extractSheetId(urls.modules) : null;
   const hasAnySheet = !!(effectivePathsId || modulesId);
@@ -33,6 +73,12 @@ export default function App() {
   const missingModules = urls && !modulesId;
   const isStale = lastSync ? Date.now() - lastSync > SIX_HOURS : false;
 
+  /**
+   * Fetches all configured sheets from the network and updates state.
+   * Called both on mount (when no cache is available) and from the
+   * navbar's resync button. Errors are caught and stored in `error`
+   * rather than thrown, so the UI can show a retry path.
+   */
   const handleSync = useCallback(async () => {
     if (!hasAnySheet) return;
     setLoading(true);
@@ -48,6 +94,9 @@ export default function App() {
     }
   }, [effectivePathsId, modulesId, hasAnySheet]);
 
+  // Bootstrap: try cache first; if any required entry is missing, fall
+  // through to a network fetch. Re-runs when sheet IDs change (i.e. user
+  // edited URLs in the SettingsModal).
   useEffect(() => {
     if (!hasAnySheet) return;
     const cached = loadFromCache(effectivePathsId, modulesId);
@@ -58,6 +107,12 @@ export default function App() {
     }
   }, [effectivePathsId, modulesId, hasAnySheet, handleSync]);
 
+  /**
+   * Persists new URLs and resets all derived data. We deliberately clear
+   * cache and lastSync so the bootstrap effect above kicks in with a
+   * fresh fetch — the previous sheets' data is meaningless against new
+   * spreadsheets.
+   */
   function handleSaveUrls(newUrls: SheetUrls) {
     setUrls(newUrls);
     setUrlsState(newUrls);
@@ -67,6 +122,7 @@ export default function App() {
     setSettingsOpen(false);
   }
 
+  // First-run: show the setup form until at least one URL is provided.
   if (!urls) {
     return <SetupPage onSave={handleSaveUrls} />;
   }
@@ -80,6 +136,9 @@ export default function App() {
         isStale={isStale}
       />
       <main className="flex-1">
+        {/* In-line warning when one (but not both) URL is missing. The
+            SetupPage guarantees at least one URL exists, but a user could
+            blank one out via the settings modal. */}
         {(missingEffectivePaths || missingModules) && (
           <div className="mx-6 mt-4 flex items-center gap-3 rounded border border-red-500/40 bg-red-950/40 px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
@@ -97,6 +156,8 @@ export default function App() {
             </button>
           </div>
         )}
+        {/* Initial-load spinner. Only shown when we have no cached data
+            yet — manual resyncs use the navbar spinner instead. */}
         {loading && !sheets && (
           <div className="flex items-center justify-center gap-3 text-slate-500 p-16">
             <RefreshCw className="w-5 h-5 animate-spin text-cyan-500" />
@@ -124,6 +185,8 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* Main UI. Planner runs the simulator; TableGrid shows the raw
+            tables with filtering. Both consume the same sheet map. */}
         {sheets && (
           <>
             <div className="px-6 pt-6">

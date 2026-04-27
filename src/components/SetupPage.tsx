@@ -1,9 +1,28 @@
+// =============================================================================
+// SetupPage.tsx — first-run screen.
+//
+// Rendered by App.tsx when `getUrls()` returns null. Collects one or two
+// Google Sheets URLs from the user, validates that each non-empty input
+// looks like a real Google Sheets link (via `extractSheetId`), and hands
+// the trimmed result to `onSave`. App.tsx then persists and the main UI
+// takes over.
+//
+// Validation rules:
+//   - At least one URL must be provided (either Effective Paths OR Modules).
+//   - Any non-empty URL must contain a parseable sheet ID.
+//   - Whitespace-only inputs are treated as empty.
+//
+// The user must share their sheets as "Anyone with the link" (Viewer)
+// because we hit the gviz endpoint anonymously — see the helper text.
+// =============================================================================
+
 import { useState } from "react";
 import { Crosshair } from "lucide-react";
 import type { SheetUrls } from "../lib/types";
 import { extractSheetId } from "../lib/storage";
 
 interface SetupPageProps {
+  /** Called with both URLs (already trimmed) once validation passes. */
   onSave: (urls: SheetUrls) => void;
 }
 
@@ -16,10 +35,12 @@ export function SetupPage({ onSave }: SetupPageProps) {
     e.preventDefault();
     const hasEP = effectivePaths.trim() !== "";
     const hasMod = modules.trim() !== "";
+    // At least one URL is required — both blank is not a valid setup.
     if (!hasEP && !hasMod) {
       setError("At least one Google Sheets URL is required.");
       return;
     }
+    // Each provided URL must parse to a real sheet ID.
     if (hasEP && !extractSheetId(effectivePaths)) {
       setError("Invalid Effective Paths URL. Must be a Google Sheets link.");
       return;
@@ -34,6 +55,9 @@ export function SetupPage({ onSave }: SetupPageProps) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="animate-fade-up border border-cyan-800/40 rounded-lg bg-slate-900/80 p-8 max-w-md w-full shadow-2xl shadow-cyan-950/30 card-shimmer">
+        {/* Brand header — keep mixed-case "EffectivePathPlanner". The
+            uppercase class was removed deliberately when we renamed away
+            from "SuperPlanner". */}
         <div className="flex items-center gap-3 mb-1">
           <Crosshair className="w-7 h-7 text-cyan-400" />
           <h1 className="font-display text-xl font-bold tracking-tight text-cyan-50">
@@ -55,6 +79,8 @@ export function SetupPage({ onSave }: SetupPageProps) {
               value={effectivePaths}
               onChange={(e) => {
                 setEffectivePaths(e.target.value);
+                // Clear any prior validation error as the user edits —
+                // keeps the UI responsive without requiring resubmit.
                 setError("");
               }}
               placeholder="https://docs.google.com/spreadsheets/d/..."
