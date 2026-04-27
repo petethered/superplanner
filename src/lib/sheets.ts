@@ -105,7 +105,7 @@ export function getSheetTabs(
   if (effectivePathsId) {
     tabs.push(
       { key: "eHP", label: "eHP", sheetId: effectivePathsId, tab: "eHP" },
-      { key: "regen", label: "regen", sheetId: effectivePathsId, tab: "eHP", colStart: 27, colEnd: 31 },
+      { key: "regen", label: "Regen", sheetId: effectivePathsId, tab: "eHP", colStart: 27, colEnd: 31 },
       { key: "eDamage", label: "eDamage", sheetId: effectivePathsId, tab: "eDamage" },
       { key: "eEcon", label: "eEcon", sheetId: effectivePathsId, tab: "eEcon" },
     );

@@ -7,6 +7,11 @@ import type { TableData, PlannerConfig, SimulationResult, SlotPlan } from "../li
 
 const ALL_TYPES = ["eHP", "regen", "eDAMAGE", "eECON", "SHARD PATH"];
 
+const TYPE_DISPLAY: Record<string, string> = {
+  regen: "Regen",
+  "SHARD PATH": "Shard Path",
+};
+
 const TYPE_TO_SHEET_KEY: Record<string, string> = {
   eHP: "eHP",
   regen: "regen",
@@ -161,7 +166,7 @@ export function Planner({ sheets }: PlannerProps) {
                 onChange={() => toggleType(type)}
                 className="accent-cyan-500"
               />
-              <span className="text-slate-400 font-mono-data">{type}</span>
+              <span className="text-slate-400 font-mono-data">{TYPE_DISPLAY[type] ?? type}</span>
             </label>
           ))}
         </div>

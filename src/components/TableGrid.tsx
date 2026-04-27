@@ -9,18 +9,18 @@ interface TableGridProps {
 
 const TABLE_CONFIG = [
   { key: "eHP", label: "eHP" },
-  { key: "regen", label: "regen" },
+  { key: "regen", label: "Regen" },
   { key: "eDamage", label: "eDAMAGE" },
   { key: "eEcon", label: "eECON" },
-  { key: "shardPath", label: "SHARD PATH" },
+  { key: "shardPath", label: "Shard Path" },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
   eHP: "eHP",
-  regen: "regen",
+  regen: "Regen",
   eDamage: "eDAMAGE",
   eEcon: "eECON",
-  shardPath: "SHARD PATH",
+  shardPath: "Shard Path",
 };
 
 function parsePercent(value: string): number {

@@ -18,8 +18,8 @@ export function Navbar({
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Crosshair className="w-5 h-5 text-cyan-400" />
-          <h1 className="font-display text-base font-bold tracking-[0.2em] text-cyan-50 uppercase">
-            SuperPlanner
+          <h1 className="font-display text-xs lg:text-base font-bold tracking-[1px] text-cyan-50">
+            EffectivePathPlanner
           </h1>
         </div>
         <div className="flex items-center gap-1">

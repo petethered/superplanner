@@ -1,7 +1,14 @@
 {
   "name": "planner",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": "Peter Azuolas",
+  "homepage": "https://effectivepathplanner.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/petethered/superplanner.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

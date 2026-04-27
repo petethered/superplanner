@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1220"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#0891b2" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#0891b2" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#1e293b" stroke-width="1" opacity="0.5"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <rect x="40" y="40" width="1120" height="550" fill="none" stroke="#0e7490" stroke-width="1" opacity="0.6"/>
+  <rect x="44" y="44" width="1112" height="542" fill="none" stroke="#22d3ee" stroke-width="1" opacity="0.2"/>
+
+  <g transform="translate(36 36)" fill="#22d3ee" opacity="0.9">
+    <rect x="0" y="0" width="14" height="2"/>
+    <rect x="0" y="0" width="2" height="14"/>
+  </g>
+  <g transform="translate(1164 36)" fill="#22d3ee" opacity="0.9">
+    <rect x="-14" y="0" width="14" height="2"/>
+    <rect x="-2" y="0" width="2" height="14"/>
+  </g>
+  <g transform="translate(36 594)" fill="#22d3ee" opacity="0.9">
+    <rect x="0" y="-2" width="14" height="2"/>
+    <rect x="0" y="-14" width="2" height="14"/>
+  </g>
+  <g transform="translate(1164 594)" fill="#22d3ee" opacity="0.9">
+    <rect x="-14" y="-2" width="14" height="2"/>
+    <rect x="-2" y="-14" width="2" height="14"/>
+  </g>
+
+  <g transform="translate(600 245)" stroke="#22d3ee" stroke-width="6" stroke-linecap="round" fill="none">
+    <circle cx="0" cy="0" r="78" opacity="0.95"/>
+    <line x1="100" x2="78" y1="0" y2="0"/>
+    <line x1="-100" x2="-78" y1="0" y2="0"/>
+    <line x1="0" x2="0" y1="-100" y2="-78"/>
+    <line x1="0" x2="0" y1="100" y2="78"/>
+    <circle cx="0" cy="0" r="3" fill="#22d3ee" stroke="none"/>
+  </g>
+  <g transform="translate(600 245)" stroke="#22d3ee" stroke-width="1" fill="none" opacity="0.25">
+    <circle cx="0" cy="0" r="115"/>
+    <circle cx="0" cy="0" r="135"/>
+  </g>
+
+  <text x="600" y="430" fill="#ecfeff" font-size="80" font-weight="800" text-anchor="middle">
+    EffectivePathPlanner
+  </text>
+
+  <line x1="380" y1="465" x2="820" y2="465" stroke="#22d3ee" stroke-width="1" opacity="0.5"/>
+
+  <text x="600" y="510" fill="#67e8f9" font-size="26" font-weight="500" text-anchor="middle" letter-spacing="6">
+    UPGRADE PLANNER FOR THE TOWER
+  </text>
+
+  <text x="600" y="555" fill="#94a3b8" font-size="22" font-weight="500" text-anchor="middle" letter-spacing="4">
+    EFFECTIVE PATHS  ·  MODULES  ·  LABS
+  </text>
+
+  <text x="60" y="610" fill="#334155" font-size="12" font-weight="500" letter-spacing="2">
+    effectivepathplanner.com
+  </text>
+  <text x="1140" y="610" fill="#334155" font-size="12" font-weight="500" letter-spacing="3" text-anchor="end">
+    V1.0
+  </text>
+</svg>

@@ -85,7 +85,7 @@ export default function App() {
             <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
             <span className="text-sm text-red-300 flex-1">
               {missingEffectivePaths
-                ? "Effective Paths URL not configured — eHP, regen, eDamage, and eEcon data unavailable."
+                ? "Effective Paths URL not configured — eHP, Regen, eDamage, and eEcon data unavailable."
                 : "Modules URL not configured — Shard Path data unavailable."}
             </span>
             <button
