@@ -85,6 +85,50 @@ src/
 Tailwind plugins. The `base: "/"` setting is load-bearing — production is
 served from the root of a custom domain, NOT a subpath. Don't change it.
 
+## Common commands
+
+- `npm run dev` — Vite dev server
+- `npm run build` — `tsc -b && vite build` (also re-captures `__BUILD_DATE__`)
+- `npx tsc --noEmit -p tsconfig.app.json` — typecheck only
+- `npx vitest run` — full test suite (41 tests today)
+
+## Brand wordmark rule
+
+The wordmark is **EffectivePathPlanner** in CamelCase. Components rendering
+it (`Navbar.tsx`, `SetupPage.tsx`) MUST NOT apply the `uppercase` class or
+wide `tracking-` (`>1px`). The legacy SUPERPLANNER all-caps form is gone;
+uppercasing CamelCase looks broken because the word boundaries disappear.
+
+## Regenerating image assets
+
+Sources of truth in `public/`: `og-image.svg`, `icon.svg`, `maskable-icon.svg`.
+When edited, re-rasterize ALL the PNG variants — there's no build-time
+automation. Recipe:
+
+```bash
+npm install --no-save sharp
+node -e "
+  const sharp = require('sharp');
+  const t = [
+    ['public/og-image.svg','public/og-image.png',1200,630],
+    ['public/icon.svg','public/favicon-16x16.png',16,16],
+    ['public/icon.svg','public/favicon-32x32.png',32,32],
+    ['public/icon.svg','public/favicon-48x48.png',48,48],
+    ['public/icon.svg','public/apple-touch-icon.png',180,180],
+    ['public/icon.svg','public/android-chrome-192x192.png',192,192],
+    ['public/icon.svg','public/android-chrome-512x512.png',512,512],
+    ['public/maskable-icon.svg','public/maskable-icon-512x512.png',512,512],
+  ];
+  (async()=>{for(const[s,o,w,h]of t)await sharp(s,{density:384}).resize(w,h).png().toFile(o);})();
+"
+magick public/favicon-16x16.png public/favicon-32x32.png public/favicon-48x48.png public/favicon.ico
+```
+
+Do NOT use ImageMagick to render the SVGs themselves — its SVG renderer
+overflows text and drops strokes. Sharp works because it bundles libvips.
+`brew install librsvg` is blocked by Homebrew sandbox permissions in this
+environment.
+
 ## Verification workflow before claiming success
 
 After any non-trivial change:
