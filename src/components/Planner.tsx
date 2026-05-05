@@ -285,7 +285,7 @@ export function Planner({ sheets }: PlannerProps) {
    */
   useEffect(() => {
     runCalculation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runCalculation closes over config + sheets, both of which ARE in deps; wrapping in useCallback would add a layer with no observable benefit.
   }, [config, sheets]);
 
   const noTypesSelected = config.enabledTypes.length === 0;
