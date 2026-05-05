@@ -4,9 +4,13 @@
 // Layout (top to bottom):
 //   - Header strip with "TIMELINE" label + total day count
 //   - Day-marker labels ("D0", "D1", ...) above the lanes
-//   - Three swim lanes (S1, S2, S3), one per slot, with:
+//   - N swim lanes (S1..SN), one per slot, with:
 //       - dashed amber blocks for idle gaps ("saving Nh")
 //       - solid color-tinted blocks per scheduled lab, labeled "<lab> L<n>"
+//
+// Lane count is taken from `results.length` so the chart scales with
+// the SLOTS dropdown in Planner (1–5). All lane-related layout math
+// (chart height, gutter labels) derives from that single source.
 //
 // Coordinate model: lane X positions are computed as a percentage of
 // totalHours. The wrapping container has a min-width so very short plans
@@ -14,17 +18,20 @@
 // block uses a `data-tooltip` attribute styled by `.gantt-block` in
 // index.css.
 //
-// All vertical sizes are constants (LANE_HEIGHT, LANE_GAP, HEADER_HEIGHT,
-// TOOLTIP_SPACE) to keep absolute positioning math straightforward.
-// TOOLTIP_SPACE reserves room above the day labels for the floating
-// tooltip to expand into without being clipped.
+// Per-lane vertical sizes are constants (LANE_HEIGHT, LANE_GAP,
+// HEADER_HEIGHT, TOOLTIP_SPACE) to keep absolute positioning math
+// straightforward. TOOLTIP_SPACE reserves room above the day labels for
+// the floating tooltip to expand into without being clipped. The total
+// CHART_HEIGHT is computed from those constants × the actual lane count.
 // =============================================================================
 
 import type { SlotPlan } from "../lib/types";
 
 interface GanttChartProps {
-  /** The 3 SlotPlans from the simulator. Empty `steps` arrays render as
-   *  empty lanes (background only). */
+  /** The SlotPlans from the simulator — one per concurrent research
+   *  slot. Length is whatever the user picked in the SLOTS dropdown
+   *  (1–5; defaults to game-canonical 3). Empty `steps` arrays render
+   *  as empty lanes (background only). */
   results: SlotPlan[];
   /** Lab → palette color map from `buildLabColorMap`. Lookups falling
    *  through return a slate placeholder. */
@@ -69,13 +76,22 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
   const totalHours = totalDays * 24;
   const dayMarkers = Array.from({ length: totalDays + 1 }, (_, i) => i);
 
-  // Layout constants. Changing any of these requires updating
-  // CHART_HEIGHT — it's the sum of all vertical contributions.
+  // Per-lane layout constants. CHART_HEIGHT is derived from these PLUS
+  // the actual lane count (`results.length`) so the chart grows or
+  // shrinks with the user's SLOTS selection. With slotCount=1 the chart
+  // collapses to ~92px; with slotCount=5 it expands to ~228px. Lane
+  // height itself stays fixed — same visual density per lane regardless
+  // of how many lanes there are.
   const LANE_HEIGHT = 32;
   const LANE_GAP = 6;
   const HEADER_HEIGHT = 16;
   const TOOLTIP_SPACE = 28;
-  const CHART_HEIGHT = TOOLTIP_SPACE + HEADER_HEIGHT + 3 * LANE_HEIGHT + 2 * LANE_GAP;
+  const slotCount = results.length;
+  const CHART_HEIGHT =
+    TOOLTIP_SPACE +
+    HEADER_HEIGHT +
+    slotCount * LANE_HEIGHT +
+    Math.max(0, slotCount - 1) * LANE_GAP;
 
   return (
     <div className="mt-4 bg-slate-800/30 rounded border border-slate-700/30">
@@ -92,16 +108,18 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
           stays visible so the tooltip can render outside the chart. */}
       <div className="p-3" style={{ overflowX: "auto", overflowY: "visible" }}>
         <div className="flex">
-          {/* Left gutter: slot labels (S1/S2/S3). Same vertical math as
-              the swim lanes so they line up. */}
+          {/* Left gutter: slot labels (S1..SN). Generated from
+              `results.length` so the gutter always matches the lane
+              count; same vertical math as the swim lanes so they line
+              up exactly. */}
           <div
             className="shrink-0 flex flex-col"
             style={{ width: "32px" }}
           >
             <div style={{ height: `${TOOLTIP_SPACE + HEADER_HEIGHT}px` }} />
-            {[1, 2, 3].map((n, i) => (
+            {results.map((_, i) => (
               <div
-                key={n}
+                key={i}
                 className="flex items-center"
                 style={{
                   height: `${LANE_HEIGHT}px`,
@@ -111,7 +129,7 @@ export function GanttChart({ results, labColors }: GanttChartProps) {
                 }}
               >
                 <span className="font-display text-[9px] font-bold tracking-wider text-cyan-500/60">
-                  S{n}
+                  S{i + 1}
                 </span>
               </div>
             ))}
