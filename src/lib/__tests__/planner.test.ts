@@ -244,16 +244,20 @@ describe("runSimulation", () => {
   });
 
   it("respects slotCount=1 — schedules sequentially in a single slot", () => {
+    // 8-hour durations × 3 steps fits a 24-hour (minDays=1) horizon, which
+    // forces the simulator to actually drain its queue rather than
+    // satisfying termination after a single 24-hour step. Without this,
+    // an early-exit bug at slotCount=1 would slip past the test.
     const steps = [
-      step("eHP", "A", 1, 100, 24, 5),
-      step("eHP", "B", 1, 100, 24, 4),
-      step("eHP", "C", 1, 100, 24, 3),
+      step("eHP", "A", 1, 100, 8, 5),
+      step("eHP", "B", 1, 100, 8, 4),
+      step("eHP", "C", 1, 100, 8, 3),
     ];
     const { slots } = runSimulation(steps, 1000, 1, 1);
     expect(slots).toHaveLength(1);
-    // Only the highest-gain step gets picked first; the rest follow in
-    // the same slot since there's nowhere else to put them.
-    expect(slots[0].steps[0].labStep.lab).toBe("A");
+    // All three labs land in the single slot, ordered by descending gain.
+    expect(slots[0].steps).toHaveLength(3);
+    expect(slots[0].steps.map((p) => p.labStep.lab)).toEqual(["A", "B", "C"]);
     // No second slot exists at all.
     expect(slots[1]).toBeUndefined();
   });

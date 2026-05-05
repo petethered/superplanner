@@ -191,7 +191,7 @@ export function runSimulation(
   dailyIncome: number,
   minDays: number = 10,
   // Number of concurrent research slots to simulate. Defaults to the
-  // game-canonical value of 3 so existing call sites and the 41 pre-existing
+  // game-canonical value of 3 so existing call sites and the pre-existing
   // tests don't need updating. The Planner UI restricts user input to
   // 1–5 via the SLOTS dropdown.
   slotCount: number = 3,
@@ -227,7 +227,7 @@ export function runSimulation(
   // `freeSlotIds.length` rather than this constant, so it generalises to
   // any `slotCount` without algorithmic change.
   const plans: PlannedStep[][] = Array.from({ length: slotCount }, () => []);
-  const slotFreeAt = new Array(slotCount).fill(0) as number[];
+  const slotFreeAt: number[] = new Array(slotCount).fill(0);
   const slotLabKey: (string | null)[] = new Array(slotCount).fill(null);
   const slotStep: (LabStep | null)[] = new Array(slotCount).fill(null);
 
