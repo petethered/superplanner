@@ -189,7 +189,7 @@ export function parseLabSteps(type: string, data: TableData): LabStep[] {
 export function runSimulation(
   allSteps: LabStep[],
   dailyIncome: number,
-  minDays: number,
+  minDays: number = 10,
   // Number of concurrent research slots to simulate. Defaults to the
   // game-canonical value of 3 so existing call sites and the 41 pre-existing
   // tests don't need updating. The Planner UI restricts user input to
