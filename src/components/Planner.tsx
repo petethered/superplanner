@@ -18,7 +18,7 @@
 //
 //   `TYPE_TO_SHEET_KEY` maps the storage key → the cache/sheet key used
 //   in the `sheets` prop (which uses camelCase keys: eHP, regen, eDamage,
-//   eEcon, shardPath). Used during `handleCalculate` to look up the right
+//   eEcon, shardPath). Used during `runCalculation` to look up the right
 //   TableData for each enabled type.
 //
 // Storage / display tables in TableGrid.tsx use a different but compatible
@@ -29,13 +29,16 @@
 //   - Written on every `updateConfig` call.
 //   - Key: `sp_planner_config` (legacy "sp_" prefix; do not rename).
 //
-// Simulation runs synchronously in `handleCalculate` — the simulator caps
+// Simulation runs synchronously in `runCalculation` — the simulator caps
 // itself at 5000 iterations and typically completes in single-digit ms.
+// `runCalculation` is invoked both manually (Calculate button) and
+// automatically via a `useEffect([config, sheets])` so plans refresh
+// whenever the user edits any config field or sheet data is repopulated.
 // Results are stored in component state (not persisted) because they're
 // derived from config + sheet data and trivially recomputed.
 // =============================================================================
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Calculator } from "lucide-react";
 import { parseLabSteps, runSimulation } from "../lib/planner";
 import { buildLabColorMap } from "../lib/colors";
@@ -222,15 +225,32 @@ export function Planner({ sheets }: PlannerProps) {
   }
 
   /**
-   * Runs the simulator. Walks `enabledTypes`, looks up each one's TableData
-   * via TYPE_TO_SHEET_KEY, parses to LabStep[], then concatenates and
-   * passes the whole pile to `runSimulation`.
+   * Runs the simulator. Single source of truth for both the auto-recalc
+   * `useEffect` and the manual Calculate button. Walks `enabledTypes`,
+   * looks up each one's TableData via TYPE_TO_SHEET_KEY, parses to
+   * LabStep[], then concatenates and passes the whole pile to
+   * `runSimulation` along with the configured slot count.
    *
-   * If no enabled type has data (or no types are enabled), we still set
-   * an empty result so the UI moves out of its "click Calculate" state
-   * and into a clear "no labs available" message.
+   * Preconditions:
+   *   - At least one type is enabled.
+   *   - dailyIncomeValue > 0.
+   * If either fails, we clear `results` to null so the UI shows the
+   * "Configure your settings…" placeholder rather than stale results.
+   *
+   * If preconditions pass but no enabled type has any data (e.g. URLs
+   * not configured for the selected sheets), we still set an explicit
+   * empty result so the UI moves into the "no labs available" state.
+   *
+   * The simulator runs synchronously and typically completes in
+   * single-digit ms — fast enough that per-keystroke recomputation on
+   * the income input feels instantaneous, so we don't bother debouncing.
    */
-  function handleCalculate() {
+  function runCalculation() {
+    if (config.enabledTypes.length === 0 || config.dailyIncomeValue <= 0) {
+      setResults(null);
+      return;
+    }
+
     const allSteps = config.enabledTypes.flatMap((type) => {
       const key = TYPE_TO_SHEET_KEY[type];
       const data = key ? sheets[key] : null;
@@ -242,9 +262,31 @@ export function Planner({ sheets }: PlannerProps) {
       return;
     }
 
-    const result = runSimulation(allSteps, config.dailyIncome, config.minDays);
+    const result = runSimulation(
+      allSteps,
+      config.dailyIncome,
+      config.minDays,
+      config.slotCount,
+    );
     setResults(result);
   }
+
+  /**
+   * Auto-recalculate whenever `config` or `sheets` changes. `config` is
+   * a fresh reference every time `updateConfig` runs (single mutation
+   * point above), so this fires exactly when the user edits a config
+   * field or `sheets` is repopulated. On initial mount it fires once
+   * with the persisted config and the freshly-loaded sheets, producing
+   * a plan immediately — no first-click required.
+   *
+   * The Calculate button still works as a manual re-run affordance
+   * (clicking it calls `runCalculation` directly with the same inputs,
+   * producing an identical result).
+   */
+  useEffect(() => {
+    runCalculation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, sheets]);
 
   const noTypesSelected = config.enabledTypes.length === 0;
   const noIncome = !config.dailyIncomeValue || config.dailyIncomeValue <= 0;
@@ -311,6 +353,24 @@ export function Planner({ sheets }: PlannerProps) {
           </select>
         </div>
 
+        {/* Slot count (1–5). The simulator's hardcoded 3-slot model used
+            to be a game-truth invariant; now exposed so the user can
+            run what-if plans for fewer or more concurrent slots. The
+            simulator's `runSimulation` defaults to 3 if the parameter
+            is omitted, but here we always pass the configured value. */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500 font-mono-data">SLOTS:</span>
+          <select
+            value={config.slotCount}
+            onChange={(e) => updateConfig({ slotCount: Number(e.target.value) })}
+            className="px-2 py-1 bg-slate-800/70 border border-slate-700 rounded text-xs text-slate-400 font-mono-data focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
+          >
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Planning horizon (minDays). Discrete options; the simulator
             keeps filling slots until each one has at least this much
             scheduled. */}
@@ -328,7 +388,7 @@ export function Planner({ sheets }: PlannerProps) {
         </div>
 
         <button
-          onClick={handleCalculate}
+          onClick={runCalculation}
           disabled={noTypesSelected || noIncome}
           className="flex items-center gap-1.5 px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold tracking-wider uppercase rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/20"
         >

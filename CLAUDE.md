@@ -174,5 +174,10 @@ These appear throughout the codebase:
   simulator's compounding behavior.
 - **Shard Path** — Module shard upgrade path from the Modules sheet
   (storage key `"SHARD PATH"`, cache key `shardPath`).
-- **Slot** — one of 3 concurrent research queues. The simulator targets
-  exactly 3 slots; this is a hardcoded game constant.
+- **Slot** — one of N concurrent research queues, where N is user-selectable
+  from 1–5 via the SLOTS dropdown in the Planner. Game canon is 3, which is
+  the default for new users and the fallback for stored configs that
+  predate this field. Stored as `slotCount` in `sp_planner_config`. The
+  simulator's `runSimulation` accepts `slotCount` as an optional 4th
+  argument (defaulting to 3), so existing call sites and the test suite
+  did not need updating when this became user-configurable.
