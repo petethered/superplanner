@@ -4,11 +4,16 @@
 // What this module does:
 //   1. Parses raw spreadsheet strings ("69.58 B", "2d 15h 14m", "16.455 638%",
 //      "lvl 5") into typed numbers.
-//   2. Runs a greedy 3-slot scheduling simulation that picks which lab to
+//   2. Runs a greedy N-slot scheduling simulation that picks which lab to
 //      research in which slot at which hour, given a daily-income budget.
+//      `N` is supplied by the caller (the `slotCount` parameter); it
+//      defaults to 3 so all existing call sites and tests continue to work.
 //
 // THE GAME MODEL (read this before touching the simulator):
-//   - The Tower has exactly 3 concurrent research slots.
+//   - The Tower has exactly 3 concurrent research slots; this is the
+//     game-canonical value and the simulator's default. The Planner UI
+//     exposes a 1–5 dropdown so the user can run "what-if" simulations
+//     for fewer or more slots.
 //   - Each "lab" has a sequence of upgrade levels; higher levels unlock as
 //     you complete the lower ones, so per-lab progression is strictly
 //     ordered.
@@ -138,7 +143,8 @@ export function parseLabSteps(type: string, data: TableData): LabStep[] {
 
 /**
  * The simulator. Returns `{ slots, finalDailyIncome }` describing a
- * greedy schedule that fills all 3 slots for at least `minDays` days.
+ * greedy schedule that fills all `slotCount` slots for at least `minDays`
+ * days. `slotCount` defaults to 3 (game canon) when omitted.
  *
  * Inputs:
  *   - `allSteps`     — every candidate LabStep across all enabled categories
@@ -183,7 +189,12 @@ export function parseLabSteps(type: string, data: TableData): LabStep[] {
 export function runSimulation(
   allSteps: LabStep[],
   dailyIncome: number,
-  minDays = 10,
+  minDays: number,
+  // Number of concurrent research slots to simulate. Defaults to the
+  // game-canonical value of 3 so existing call sites and the 41 pre-existing
+  // tests don't need updating. The Planner UI restricts user input to
+  // 1–5 via the SLOTS dropdown.
+  slotCount: number = 3,
 ): SimulationResult {
   const minHours = minDays * 24;
 
@@ -210,11 +221,15 @@ export function runSimulation(
   // "same lab can't run in 2 slots simultaneously".
   const running = new Set<string>();
 
-  // Per-slot scheduling state. The game has exactly 3 concurrent slots.
-  const plans: PlannedStep[][] = [[], [], []];
-  const slotFreeAt = [0, 0, 0];
-  const slotLabKey: (string | null)[] = [null, null, null];
-  const slotStep: (LabStep | null)[] = [null, null, null];
+  // Per-slot scheduling state. Sized by `slotCount`. The game's canonical
+  // value is 3; the caller may pass 1–5 via the SLOTS dropdown in the UI.
+  // The greedy budget reservation below derives all its arithmetic from
+  // `freeSlotIds.length` rather than this constant, so it generalises to
+  // any `slotCount` without algorithmic change.
+  const plans: PlannedStep[][] = Array.from({ length: slotCount }, () => []);
+  const slotFreeAt = new Array(slotCount).fill(0) as number[];
+  const slotLabKey: (string | null)[] = new Array(slotCount).fill(null);
+  const slotStep: (LabStep | null)[] = new Array(slotCount).fill(null);
 
   let hour = 0;
   // Start the pool at one full day of income — the user has presumably
@@ -227,7 +242,7 @@ export function runSimulation(
    * If the completed lab is an eECON, applies the prorated income boost.
    */
   function freeFinishedSlots(): void {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < slotCount; i++) {
       if (slotLabKey[i] && slotFreeAt[i] <= hour) {
         // eECON labs grant a percentage daily-income boost based on the
         // duration they ran for. Other categories don't affect income.
@@ -300,7 +315,7 @@ export function runSimulation(
 
     // Identify which slots are currently empty AND still need work.
     const freeSlotIds: number[] = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < slotCount; i++) {
       if (slotLabKey[i] === null && slotFreeAt[i] < minHours) {
         freeSlotIds.push(i);
       }
@@ -351,7 +366,7 @@ export function runSimulation(
     //   (a) Some slot is currently running — fast-forward to its finish
     //       so we can free it and try again. Coins accrue during the wait.
     let nextFinish = Infinity;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < slotCount; i++) {
       if (slotLabKey[i] && slotFreeAt[i] > hour) {
         nextFinish = Math.min(nextFinish, slotFreeAt[i]);
       }

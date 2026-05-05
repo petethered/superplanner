@@ -78,23 +78,33 @@ const SUFFIX_MULTIPLIERS: Record<string, number> = {
 /**
  * Reads persisted planner config from localStorage. Returns sensible
  * defaults when nothing is stored yet (all types enabled, 1q/day income,
- * 14-day horizon). The try/catch guards against malformed JSON without
- * crashing — defaults are returned in that case.
+ * 14-day horizon, 3 concurrent research slots — game canon).
+ *
+ * Migration note: when the user has a stored config from before a new
+ * field was added, we spread the parsed JSON over the defaults so missing
+ * fields fall back to their default value rather than leaving the field
+ * `undefined`. `slotCount` was added in this exact way (May 2026) — old
+ * stored configs read back with `slotCount = 3`.
+ *
+ * The try/catch guards against malformed JSON without crashing — defaults
+ * are returned in that case.
  */
 function loadConfig(): PlannerConfig {
-  try {
-    const raw = localStorage.getItem("sp_planner_config");
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore — fall through to defaults */
-  }
-  return {
+  const defaults: PlannerConfig = {
     enabledTypes: [...ALL_TYPES],
     dailyIncome: 1e15,
     dailyIncomeSuffix: "q",
     dailyIncomeValue: 1,
     minDays: 14,
+    slotCount: 3,
   };
+  try {
+    const raw = localStorage.getItem("sp_planner_config");
+    if (raw) return { ...defaults, ...JSON.parse(raw) };
+  } catch {
+    /* ignore — fall through to defaults */
+  }
+  return defaults;
 }
 
 /** Persists config under `sp_planner_config`. Called from `updateConfig`

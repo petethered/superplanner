@@ -101,6 +101,13 @@ export interface LabStep {
  *                           dailyIncome = dailyIncomeValue * suffixMultiplier
  * - `minDays`             — planning horizon; the simulator fills slots until
  *                           every slot has at least this many days scheduled
+ * - `slotCount`           — number of concurrent research slots to simulate.
+ *                           Valid range 1–5 (UI-enforced via the SLOTS
+ *                           dropdown). Game canon is 3, which is the default
+ *                           applied by `loadConfig` and by `runSimulation`'s
+ *                           default parameter. Stored configs from before
+ *                           this field existed are migrated to `3` on read
+ *                           via spread-defaults in `loadConfig`.
  */
 export interface PlannerConfig {
   enabledTypes: string[];
@@ -108,6 +115,7 @@ export interface PlannerConfig {
   dailyIncomeSuffix: string;
   dailyIncomeValue: number;
   minDays: number;
+  slotCount: number;
 }
 
 /**

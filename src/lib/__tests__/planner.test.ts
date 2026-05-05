@@ -242,4 +242,36 @@ describe("runSimulation", () => {
     // 10% per day * 1 day = 10% gain, so income should increase
     expect(result.finalDailyIncome).toBeGreaterThan(1000);
   });
+
+  it("respects slotCount=1 — schedules sequentially in a single slot", () => {
+    const steps = [
+      step("eHP", "A", 1, 100, 24, 5),
+      step("eHP", "B", 1, 100, 24, 4),
+      step("eHP", "C", 1, 100, 24, 3),
+    ];
+    const { slots } = runSimulation(steps, 1000, 1, 1);
+    expect(slots).toHaveLength(1);
+    // Only the highest-gain step gets picked first; the rest follow in
+    // the same slot since there's nowhere else to put them.
+    expect(slots[0].steps[0].labStep.lab).toBe("A");
+    // No second slot exists at all.
+    expect(slots[1]).toBeUndefined();
+  });
+
+  it("respects slotCount=5 — distributes work across all five slots", () => {
+    const steps = [
+      step("eHP", "A", 1, 100, 24, 5),
+      step("eHP", "B", 1, 100, 24, 4),
+      step("eHP", "C", 1, 100, 24, 3),
+      step("eHP", "D", 1, 100, 24, 2),
+      step("eHP", "E", 1, 100, 24, 1),
+      step("eHP", "F", 1, 100, 24, 0.5),
+    ];
+    const { slots } = runSimulation(steps, 10_000, 1, 5);
+    expect(slots).toHaveLength(5);
+    // Each of the five highest-gain labs should occupy a distinct slot
+    // for the first scheduled step.
+    const firstLabs = slots.map((s) => s.steps[0]?.labStep.lab).sort();
+    expect(firstLabs).toEqual(["A", "B", "C", "D", "E"]);
+  });
 });
