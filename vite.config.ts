@@ -17,6 +17,11 @@
 // "/superplanner/"; that broke production routing in a previous deploy
 // and was reverted in commit 501d6dc.
 //
+// `server.port: 5666` / `preview.port: 5666` — pinned dev/preview port so
+// the URL is stable across restarts. `strictPort: true` makes Vite fail
+// fast instead of silently bumping to the next free port if 5666 is in
+// use, which would otherwise mask "old dev server still running" bugs.
+//
 // `define.__BUILD_DATE__` — injects the current ISO timestamp as a string
 // literal at build time. Footer.tsx reads this global to render the
 // "UPDATED: <date>" line. The replacement happens once per process, so
@@ -40,6 +45,14 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: "/",
+  server: {
+    port: 5666,
+    strictPort: true,
+  },
+  preview: {
+    port: 5666,
+    strictPort: true,
+  },
   define: {
     // Captured at build/dev-server start. JSON.stringify wraps the ISO
     // string in quotes so the textual replacement in source files turns
