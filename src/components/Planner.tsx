@@ -1,7 +1,8 @@
 // =============================================================================
 // Planner.tsx — the planner UI: category checkboxes, daily-income input,
-// planning horizon selector, "Calculate" button, and the rendered results
-// (3 slot lists, summary card, Gantt chart).
+// planning horizon selector, slot-count selector, "Calculate" button, and
+// the rendered results (per-slot lists, summary card, Gantt chart). Slot
+// count is user-selectable (1–5, default 3) via the SLOTS dropdown.
 //
 // Storage / display key model (IMPORTANT, easy to confuse):
 //
@@ -159,11 +160,11 @@ interface PlanSummary {
 }
 
 /**
- * Walks all planned steps across all 3 slots and computes the SUMMARY
- * card's totals. Cost is the sum of `labStep.cost`. Gain per type is
- * computed prorated: `(gainPerDay/24) * durationHours` per step, summed by
- * type. This matches the formula used by the simulator's eECON income
- * boost — see runSimulation#freeFinishedSlots.
+ * Walks all planned steps across every slot in `results` and computes the
+ * SUMMARY card's totals. Cost is the sum of `labStep.cost`. Gain per
+ * type is computed prorated: `(gainPerDay/24) * durationHours` per step,
+ * summed by type. This matches the formula used by the simulator's eECON
+ * income boost — see runSimulation#freeFinishedSlots.
  */
 function computeSummary(results: SlotPlan[]): PlanSummary {
   let totalCost = 0;
@@ -537,9 +538,10 @@ export function Planner({ sheets }: PlannerProps) {
               </div>
             );
           })()}
-          {/* Visual timeline. Renders all 3 slots as horizontal swim lanes
-              spanning the full plan duration, with color-coded lab blocks
-              and dashed amber blocks for idle gaps. */}
+          {/* Visual timeline. Renders every slot in `results` as a
+              horizontal swim lane spanning the full plan duration, with
+              color-coded lab blocks and dashed amber blocks for idle
+              gaps. The chart's height tracks `results.length`. */}
           <GanttChart results={results.slots} labColors={labColors} />
           </>
         )}
