@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- =====================================================================
+      /sheet — static redirect to the community Effective Paths sheet's
+      "make a copy" page on Google Docs.
+
+      Why a static file instead of an in-app route: the SPA has no router,
+      and GitHub Pages would otherwise serve 404.html for /sheet (bouncing
+      the user to the home page). A real file at public/sheet/index.html is
+      served directly (Pages 301s /sheet -> /sheet/), so the redirect fires
+      before any app JavaScript loads. Vite copies public/ verbatim, so the
+      same path works under `npm run dev` and `vite preview`.
+
+      Redundant redirect layers, in order of preference:
+        1. location.replace()  — instant, keeps /sheet out of history
+        2. <meta refresh>      — fires if JS is disabled
+        3. visible <a> link    — last-resort manual click
+      Keep all three URLs in sync if the target sheet ever changes.
+    ===================================================================== -->
+    <meta charset="utf-8" />
+    <!-- Only matters in the JS-disabled fallback case, where the <body>
+         text is actually visible — without it the text renders tiny on
+         mobile. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EffectivePathPlanner — Sheet</title>
+    <!-- Pure redirect page; keep it out of search indexes. -->
+    <meta name="robots" content="noindex" />
+    <meta
+      http-equiv="refresh"
+      content="0; url=https://docs.google.com/spreadsheets/d/1YwZtKP6B4WYhRba5T6APJ1YxKNdfnIGQnprgnxmO7zc/copy"
+    />
+    <script>
+      location.replace(
+        "https://docs.google.com/spreadsheets/d/1YwZtKP6B4WYhRba5T6APJ1YxKNdfnIGQnprgnxmO7zc/copy"
+      );
+    </script>
+  </head>
+  <body>
+    <p>
+      Redirecting to the Effective Paths sheet&hellip;
+      <a
+        href="https://docs.google.com/spreadsheets/d/1YwZtKP6B4WYhRba5T6APJ1YxKNdfnIGQnprgnxmO7zc/copy"
+        >Click here if you are not redirected.</a
+      >
+    </p>
+  </body>
+</html>
