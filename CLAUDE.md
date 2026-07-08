@@ -90,7 +90,7 @@ served from the root of a custom domain, NOT a subpath. Don't change it.
 - `npm run dev` — Vite dev server
 - `npm run build` — `tsc -b && vite build` (also re-captures `__BUILD_DATE__`)
 - `npx tsc --noEmit -p tsconfig.app.json` — typecheck only
-- `npx vitest run` — full test suite (41 tests today)
+- `npx vitest run` — full test suite (49 tests today)
 
 ## Brand wordmark rule
 
@@ -135,7 +135,7 @@ After any non-trivial change:
 
 ```bash
 npx tsc --noEmit -p tsconfig.app.json   # typecheck
-npx vitest run                          # unit tests (currently 41 tests)
+npx vitest run                          # unit tests (currently 49 tests)
 ```
 
 Both should be silent / all-green. UI-level changes also benefit from a

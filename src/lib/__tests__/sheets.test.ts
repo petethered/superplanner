@@ -74,10 +74,30 @@ describe("extractTableData", () => {
     expect(data.rows[0][0]).toBe("");
   });
 
-  it("extracts custom column range", () => {
+  it("extracts a custom contiguous column list (the regen slice)", () => {
     const response = makeResponse(35, 50);
-    const data = extractTableData(response, 27, 31);
+    const data = extractTableData(response, [27, 28, 29, 30, 31]);
     expect(data.rows[0][0]).toBe("R3C27");
     expect(data.rows[0][4]).toBe("R3C31");
+  });
+
+  it("extracts a non-contiguous column list (the eEcon v28.0 layout)", () => {
+    // eEcon's % gain column (12) is separated from LAB/LEVEL/COST/DURATION
+    // (6-9) by two unrelated columns — the list must be able to skip them.
+    const response = makeResponse(15, 50);
+    const data = extractTableData(response, [6, 7, 8, 9, 12]);
+    expect(data.rows[0]).toEqual(["R3C6", "R3C7", "R3C8", "R3C9", "R3C12"]);
+  });
+
+  it("drops rows that are empty in the selected columns even when other columns have values", () => {
+    // Mirrors the real eEcon tab: its row 3 carries a "↓ TIME PATH ↓" marker
+    // in column 5, which is OUTSIDE the eEcon column list — the row must be
+    // treated as empty and dropped so data cleanly starts at row 4.
+    const response = makeResponse(15, 6);
+    response.table.rows[3].c = response.table.rows[3].c.map((cell, c) =>
+      c === 5 ? cell : { v: "" },
+    );
+    const data = extractTableData(response, [6, 7, 8, 9, 12]);
+    expect(data.rows[0][0]).toBe("R4C6");
   });
 });

@@ -44,15 +44,23 @@
 
 import type { LabStep, PlannedStep, SimulationResult, TableData } from "./types";
 
-// SI-style suffixes used by the source spreadsheet. Note that `q`
-// (lowercase quadrillion = 1e15) and `Q` (uppercase quintillion = 1e18) are
-// case-sensitive — DO NOT lowercase the input before matching.
+// SI-style suffixes used by the source spreadsheet, following The Tower's
+// in-game number notation. Case-sensitive — `q` (quadrillion) vs `Q`
+// (quintillion) and `s` (sextillion) vs `S` (septillion) differ only by
+// case, so DO NOT lowercase the input before matching.
+// `K` and `s` were observed in the live Effective Paths sheet (v28.0):
+// K in early eHP/eDamage costs, s in late eEcon/eHP costs. `S` is the next
+// tier in the game's ladder, included so the parser doesn't silently zero
+// costs the day the sheet grows into it.
 const COST_SUFFIXES: Record<string, number> = {
+  K: 1e3,
   M: 1e6,
   B: 1e9,
   T: 1e12,
   q: 1e15,
   Q: 1e18,
+  s: 1e21,
+  S: 1e24,
 };
 
 /**
@@ -70,8 +78,9 @@ export function parseCost(str: string): number {
   const trimmed = str.trim();
   if (!trimmed) return 0;
   // Group 1 is the numeric portion (digits, dots, commas, spaces);
-  // group 2 is one of the SI suffixes or empty.
-  const match = trimmed.match(/^([\d.,\s]+?)\s*([MBTqQ]?)$/);
+  // group 2 is one of the SI suffixes or empty. Keep this character class
+  // in sync with COST_SUFFIXES above.
+  const match = trimmed.match(/^([\d.,\s]+?)\s*([KMBTqQsS]?)$/);
   if (!match) return 0;
   const numStr = match[1].replace(/[\s,]/g, "");
   const value = parseFloat(numStr);

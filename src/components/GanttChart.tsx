@@ -48,13 +48,17 @@ function formatHours(h: number): string {
 }
 
 /** SI-suffix cost formatter — mirrored from Planner.tsx for the same
- *  decoupling reason. Keep these two formatters identical. */
+ *  decoupling reason. Keep these two formatters identical, and keep the
+ *  tier ladder in sync with COST_SUFFIXES in lib/planner.ts. */
 function formatCost(cost: number): string {
+  if (cost >= 1e24) return `${(cost / 1e24).toFixed(2)} S`;
+  if (cost >= 1e21) return `${(cost / 1e21).toFixed(2)} s`;
   if (cost >= 1e18) return `${(cost / 1e18).toFixed(2)} Q`;
   if (cost >= 1e15) return `${(cost / 1e15).toFixed(2)} q`;
   if (cost >= 1e12) return `${(cost / 1e12).toFixed(2)} T`;
   if (cost >= 1e9) return `${(cost / 1e9).toFixed(2)} B`;
   if (cost >= 1e6) return `${(cost / 1e6).toFixed(2)} M`;
+  if (cost >= 1e3) return `${(cost / 1e3).toFixed(2)} K`;
   return cost.toFixed(0);
 }
 

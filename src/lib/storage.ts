@@ -59,6 +59,13 @@ export function setCached(key: string, data: TableData): void {
   localStorage.setItem(KEYS.CACHE + key, JSON.stringify(entry));
 }
 
+/** Removes one cached sheet entry. Used by the one-shot cache migration in
+ *  App.tsx — since `loadFromCache` in sheets.ts is all-or-nothing, removing
+ *  a single entry is enough to force a full fresh fetch on next load. */
+export function removeCached(key: string): void {
+  localStorage.removeItem(KEYS.CACHE + key);
+}
+
 /** Returns the most-recent sync timestamp (epoch ms), or null if never
  *  synced. Drives the "LAST SYNC: Xm ago" label in the footer and the
  *  amber stale indicator in the navbar (when older than SIX_HOURS). */

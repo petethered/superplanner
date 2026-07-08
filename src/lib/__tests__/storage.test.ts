@@ -9,6 +9,7 @@
 //   - extractSheetId — edit URL, gviz URL, and rejection for non-sheets URLs
 //   - URL storage    — null-when-empty, persistence round-trip
 //   - cache          — null-when-empty, write+read with timestamp,
+//                      `removeCached` drops one entry only, and
 //                      `clearAllCache` removes entries AND the lastSync
 //   - last sync      — null-when-empty, persistence round-trip
 // =============================================================================
@@ -19,6 +20,7 @@ import {
   setUrls,
   getCached,
   setCached,
+  removeCached,
   getLastSync,
   setLastSync,
   clearAllCache,
@@ -75,6 +77,14 @@ describe("cache", () => {
     const cached = getCached("test");
     expect(cached?.data).toEqual(data);
     expect(cached?.timestamp).toBeGreaterThan(0);
+  });
+
+  it("removes a single cache entry without touching others", () => {
+    setCached("a", { headers: [], rows: [["x"]] });
+    setCached("b", { headers: [], rows: [["y"]] });
+    removeCached("a");
+    expect(getCached("a")).toBeNull();
+    expect(getCached("b")).not.toBeNull();
   });
 
   it("clears all cache entries and last sync", () => {

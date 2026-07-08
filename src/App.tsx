@@ -42,10 +42,39 @@ import {
   setUrls,
   extractSheetId,
   getLastSync,
+  getCached,
+  removeCached,
   clearAllCache,
 } from "./lib/storage";
 import { fetchAndCacheAll, loadFromCache } from "./lib/sheets";
 import type { SheetUrls, TableData } from "./lib/types";
+
+// ---------------------------------------------------------------------------
+// One-shot cache migration, run at module load (before first render) so the
+// bootstrap effect below sees a clean cache.
+//
+// eEcon v28.0 layout fix (July 2026): the upstream eEcon tab shifted one
+// column right, so caches written by the old fixed 5–9 extraction window are
+// misaligned garbage — every data row has a blank LAB cell (the lab names
+// landed in the LEVEL column) and the only row with a non-blank LAB is the
+// "↓ TIME PATH ↓" marker, which has a blank LEVEL. Detection: a HEALTHY
+// eEcon cache has at least one row with BOTH LAB and LEVEL non-blank; a
+// stale one has none. On detection we drop just the eEcon entry —
+// `loadFromCache` is all-or-nothing, so one missing entry forces a full
+// fresh fetch with the corrected column list. Idempotent: healthy caches
+// (including the post-fix refetch) are never touched, so this block is safe
+// to leave in place indefinitely.
+// ---------------------------------------------------------------------------
+(() => {
+  const eEcon = getCached("eEcon");
+  if (
+    eEcon &&
+    eEcon.data.rows.length > 0 &&
+    !eEcon.data.rows.some((r) => r[0]?.trim() && r[1]?.trim())
+  ) {
+    removeCached("eEcon");
+  }
+})();
 
 // Threshold for the "stale data" indicator in the Navbar. Anything older
 // than this paints the resync button amber via `stale-glow`.

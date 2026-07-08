@@ -49,6 +49,19 @@ describe("parseCost", () => {
     expect(parseCost("2.5 Q")).toBeCloseTo(2.5e18);
   });
 
+  it("parses thousands (K appears in early eHP/eDamage costs)", () => {
+    expect(parseCost("150 K")).toBe(150e3);
+  });
+
+  it("parses sextillions (lowercase s — seen in late eEcon/eHP costs)", () => {
+    expect(parseCost("1.86 s")).toBeCloseTo(1.86e21, -6);
+  });
+
+  it("parses septillions (uppercase S — next tier in the game's ladder)", () => {
+    // Exact equality is safe: parseFloat("3.1") * 1e24 === 3.1e24 in IEEE-754.
+    expect(parseCost("3.1 S")).toBe(3.1e24);
+  });
+
   it("returns 0 for empty string", () => {
     expect(parseCost("")).toBe(0);
   });

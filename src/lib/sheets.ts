@@ -18,11 +18,21 @@
 //   slice the response into multiple `TableData`s.
 //
 // Hardcoded ranges:
-//   `extractTableData` uses fixed row/column offsets that match the layout
-//   of the Effective Paths spreadsheet. If the upstream sheet structure
-//   changes, those magic numbers (rowStart=3, rowEnd=100, colStart=5,
-//   colEnd=9) must change too. The "regen" tab uses a different column
-//   slice (27-31) so it shares row indices but different columns.
+//   `extractTableData` uses fixed row offsets (rowStart=3, rowEnd=100) and a
+//   per-tab COLUMN LIST that matches the layout of the Effective Paths
+//   spreadsheet. If the upstream sheet structure changes, the column lists
+//   in `getSheetTabs` must change too. Current per-tab lists:
+//     - eHP / eDamage: [5,6,7,8,9]   (the default — Lab, lvl, Cost,
+//       Duration, %gain are contiguous)
+//     - regen:         [27,28,29,30,31] (same shape, different slice of the
+//       physical eHP tab)
+//     - eEcon:         [6,7,8,9,12]  (the v28.0 "Avg. CPK Time Path" layout
+//       shifted the table one column right and inserted "Recommended
+//       Coin/H" (10) and "Time to farm Cost" (11) between Duration and the
+//       % gain column, so the selection is NON-contiguous)
+//   Column lists exist precisely because eEcon's % gain is no longer
+//   adjacent to the other four columns — a start/end window can't express
+//   that.
 // =============================================================================
 
 import type { SheetResponse, TableData } from "./types";
@@ -118,17 +128,25 @@ export function fetchSheet(
   });
 }
 
+// Default column list: the LAB/LEVEL/COST/DURATION/% GAIN columns in the
+// eHP and eDamage tabs, where all five are contiguous. Tabs whose layout
+// differs (regen, eEcon) pass their own list via `getSheetTabs`.
+const DEFAULT_COLS = [5, 6, 7, 8, 9];
+
 /**
  * Slices a `SheetResponse` into a clean `TableData` with our canonical
  * 5-column header.
  *
  * Layout assumptions (DO NOT CHANGE without updating the spreadsheet too):
  *   - Header rows at indices 0..2 are skipped (titles, blank, sub-titles).
- *   - Data rows are at indices 3..min(rows.length-1, 100).
- *   - Default column window is 5..9 (the LAB/LEVEL/COST/DURATION/% GAIN
- *     columns in eHP/eDamage/eEcon tabs).
- *   - The "regen" view of the eHP tab uses cols 27..31 instead — passed in
- *     by `getSheetTabs` below.
+ *   - Data rows are at indices 3..min(rows.length-1, 100). (The eEcon tab's
+ *     data actually starts at index 4 — its row 3 is blank in the selected
+ *     columns and gets dropped by the empty-row filter below, so the shared
+ *     rowStart=3 still works.)
+ *   - `cols` is the ORDERED list of source column indices mapped onto the
+ *     canonical headers, one per header. It need not be contiguous — eEcon
+ *     uses [6,7,8,9,12] because its % gain column is separated from the
+ *     rest (see top-of-file "Hardcoded ranges" note).
  *
  * Each cell prefers the formatted value `cell.f` (display string) over the
  * raw `cell.v` (numeric). This preserves the spreadsheet's intended
@@ -139,8 +157,7 @@ export function fetchSheet(
  */
 export function extractTableData(
   response: SheetResponse,
-  colStart = 5,
-  colEnd = 9,
+  cols: number[] = DEFAULT_COLS,
 ): TableData {
   const { rows } = response.table;
   const rowStart = 3;
@@ -152,7 +169,7 @@ export function extractTableData(
   for (let r = rowStart; r <= rowEnd && r < rows.length; r++) {
     const row = rows[r].c;
     const values: string[] = [];
-    for (let c = colStart; c <= colEnd; c++) {
+    for (const c of cols) {
       const cell = row?.[c];
       // Prefer formatted (`f`) over raw (`v`); fall back to "" for null cells.
       values.push(cell?.f ?? String(cell?.v ?? ""));
@@ -166,16 +183,16 @@ export function extractTableData(
 
 /**
  * Internal descriptor for one logical sheet tab as the app sees it.
- * `colStart`/`colEnd` are optional — when omitted, `extractTableData` uses
- * its defaults (the standard 5..9 window).
+ * `cols` is optional — when omitted, `extractTableData` uses its default
+ * list (the standard [5,6,7,8,9] columns). It is an ordered, possibly
+ * non-contiguous list of source column indices, one per canonical header.
  */
 interface SheetTab {
   key: string;
   label: string;
   sheetId: string;
   tab: string;
-  colStart?: number;
-  colEnd?: number;
+  cols?: number[];
 }
 
 /**
@@ -200,9 +217,13 @@ export function getSheetTabs(
     tabs.push(
       { key: "eHP", label: "eHP", sheetId: effectivePathsId, tab: "eHP" },
       // regen reuses the eHP tab but slices a different column range.
-      { key: "regen", label: "Regen", sheetId: effectivePathsId, tab: "eHP", colStart: 27, colEnd: 31 },
+      { key: "regen", label: "Regen", sheetId: effectivePathsId, tab: "eHP", cols: [27, 28, 29, 30, 31] },
       { key: "eDamage", label: "eDamage", sheetId: effectivePathsId, tab: "eDamage" },
-      { key: "eEcon", label: "eEcon", sheetId: effectivePathsId, tab: "eEcon" },
+      // eEcon's v28.0 layout ("The Effective Avg. CPK Time Path") shifted
+      // the table one column right vs. eHP/eDamage and inserted
+      // "Recommended Coin/H" (col 10) and "Time to farm Cost" (col 11)
+      // between Duration and the % gain column — hence the gap to 12.
+      { key: "eEcon", label: "eEcon", sheetId: effectivePathsId, tab: "eEcon", cols: [6, 7, 8, 9, 12] },
     );
   }
   if (modulesId) {
@@ -219,8 +240,8 @@ export function getSheetTabs(
  *
  * Fetch-deduplication: tabs are grouped by `<sheetId>:<tab>` so two logical
  * keys that share the same physical tab (eHP and regen) only trigger one
- * network round-trip. Within a group, each tab's `colStart/colEnd` is
- * applied independently to the shared response.
+ * network round-trip. Within a group, each tab's `cols` list is applied
+ * independently to the shared response.
  *
  * Side effects:
  *   - Writes each derived TableData to localStorage via `setCached`.
@@ -251,7 +272,7 @@ export async function fetchAndCacheAll(
       const response = await fetchSheet(first.sheetId, first.tab);
       // Slice the shared response into one TableData per logical key.
       for (const tab of group.tabs) {
-        const data = extractTableData(response, tab.colStart, tab.colEnd);
+        const data = extractTableData(response, tab.cols);
         setCached(tab.key, data);
         results[tab.key] = data;
       }

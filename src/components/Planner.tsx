@@ -68,15 +68,19 @@ const TYPE_TO_SHEET_KEY: Record<string, string> = {
   "SHARD PATH": "shardPath",
 };
 
-// SI-style suffix multipliers for the income input. Same set as
-// `COST_SUFFIXES` in lib/planner.ts but kept local so this file can be
-// understood standalone.
+// SI-style suffix multipliers for the income input. The M-and-above subset
+// of `COST_SUFFIXES` in lib/planner.ts (K is deliberately omitted — a
+// sub-million daily income isn't a realistic planner input), kept local so
+// this file can be understood standalone. Keep the <select> options in the
+// income dropdown below in sync with this map.
 const SUFFIX_MULTIPLIERS: Record<string, number> = {
   M: 1e6,
   B: 1e9,
   T: 1e12,
   q: 1e15,
   Q: 1e18,
+  s: 1e21,
+  S: 1e24,
 };
 
 /**
@@ -139,16 +143,22 @@ function formatDuration(h: number): string {
 }
 
 /**
- * Compact cost formatter using the same SI suffixes as `parseCost`.
+ * Compact cost formatter using the same SI suffixes as `parseCost`
+ * (COST_SUFFIXES in lib/planner.ts — keep the tier ladder here in sync).
  * Picks the largest applicable suffix and shows two decimal places. For
- * sub-million costs returns the integer count.
+ * sub-thousand costs returns the integer count.
+ * NOTE: GanttChart.tsx has an identical copy — keep the two formatters
+ * identical.
  */
 function formatCost(cost: number): string {
+  if (cost >= 1e24) return `${(cost / 1e24).toFixed(2)} S`;
+  if (cost >= 1e21) return `${(cost / 1e21).toFixed(2)} s`;
   if (cost >= 1e18) return `${(cost / 1e18).toFixed(2)} Q`;
   if (cost >= 1e15) return `${(cost / 1e15).toFixed(2)} q`;
   if (cost >= 1e12) return `${(cost / 1e12).toFixed(2)} T`;
   if (cost >= 1e9) return `${(cost / 1e9).toFixed(2)} B`;
   if (cost >= 1e6) return `${(cost / 1e6).toFixed(2)} M`;
+  if (cost >= 1e3) return `${(cost / 1e3).toFixed(2)} K`;
   return cost.toFixed(0);
 }
 
@@ -346,11 +356,14 @@ export function Planner({ sheets }: PlannerProps) {
             }
             className="px-2 py-1 bg-slate-800/70 border border-slate-700 rounded text-xs text-slate-400 font-mono-data focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
           >
+            {/* One option per SUFFIX_MULTIPLIERS entry — keep in sync. */}
             <option value="M">M</option>
             <option value="B">B</option>
             <option value="T">T</option>
             <option value="q">q</option>
             <option value="Q">Q</option>
+            <option value="s">s</option>
+            <option value="S">S</option>
           </select>
         </div>
 
