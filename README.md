@@ -233,12 +233,14 @@ without a migration step):
 - `sp_urls` — JSON `SheetUrls` (the two configured URLs).
 - `sp_last_sync` — epoch ms of the last successful sync.
 - `sp_cache_<sheet-key>` — one entry per sheet tab.
+- `sp_extract_version` — which extractor shape wrote the cache. A mismatch
+  makes `loadFromCache` refetch instead of trusting stale tables.
 - `sp_planner_config` — planner config including `enabledTypes`.
 
 **Cost / duration / gain parsers** live in `src/lib/planner.ts`:
 
-- `parseCost("69.58 B")` → `6.958e10` (suffixes: `M`, `B`, `T`, `q`, `Q`;
-  case-sensitive — `q` ≠ `Q`).
+- `parseCost("69.58 B")` → `6.958e10` (suffixes: `K`, `M`, `B`, `T`, `q`,
+  `Q`, `s`, `S`; case-sensitive — `q` ≠ `Q` and `s` ≠ `S`).
 - `parseDuration("2d 15h 14m")` → fractional hours.
 - `parseGain("16.455 638%")` → `16.455638`.
 - `parseLevel("lvl 5")` → `5`.

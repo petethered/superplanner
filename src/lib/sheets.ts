@@ -17,13 +17,12 @@
 //   (sheetId, tab) so we only hit the network once per physical tab and then
 //   slice the response into multiple `TableData`s.
 //
-// Hardcoded ranges:
-//   `extractTableData` uses fixed row offsets (rowStart=3, rowEnd=100) and a
-//   per-tab COLUMN LIST that matches the layout of the Effective Paths
-//   spreadsheet. If the upstream sheet structure changes, the column lists
-//   in `getSheetTabs` must change too. Current per-tab lists:
-//     - eHP / eDamage: [5,6,7,8,9]   (the default — Lab, lvl, Cost,
-//       Duration, %gain are contiguous)
+// Hardcoded COLUMNS, discovered ROWS:
+//   `extractTableData` needs a per-tab COLUMN LIST that matches the layout of
+//   the Effective Paths spreadsheet. If the upstream sheet structure changes,
+//   the column lists in `getSheetTabs` must change too. Current per-tab lists:
+//     - eHP / eDamage / shardPath: [5,6,7,8,9]  (the default — Lab, lvl,
+//       Cost, Duration, %gain are contiguous)
 //     - regen:         [27,28,29,30,31] (same shape, different slice of the
 //       physical eHP tab)
 //     - eEcon:         [6,7,8,9,12]  (the v28.0 "Avg. CPK Time Path" layout
@@ -33,10 +32,35 @@
 //   Column lists exist precisely because eEcon's % gain is no longer
 //   adjacent to the other four columns — a start/end window can't express
 //   that.
+//
+//   ROW offsets, by contrast, are NOT hardcoded — see `isDataRow`, which
+//   recognises a step by its shape so every non-step row is dropped wherever
+//   it appears. Offsets used to be fixed (rowStart=3, rowEnd=100) and both
+//   halves of that broke:
+//     - Leading rows differ per tab. Under `headers=0` the real layouts are
+//       eHP/shardPath = 4 lead rows, eDamage/eEcon = 5. A single constant
+//       cannot serve both.
+//     - The paths outgrew row 100. eDamage was ~145 steps in August 2026;
+//       the old cap silently discarded the tail. Path length depends on the
+//       reader's own game stats, so treat that count as a snapshot, not a
+//       constant.
+//
+// headers=0 is load-bearing:
+//   Without it, gviz *guesses* how many leading rows are a header and strips
+//   them, so JSON row indices shift with the sheet's CONTENT, not just its
+//   structure. It ate 0 rows from eHP but 2 from Shard Path. `headers=0`
+//   turns that off, so row N of the response is always row N+1 of the sheet.
+//   It changes nothing else — cells keep their `v`/`f` pair either way.
 // =============================================================================
 
-import type { SheetResponse, TableData } from "./types";
-import { getCached, setCached, setLastSync } from "./storage";
+import type { SheetCell, SheetResponse, TableData } from "./types";
+import {
+  getCached,
+  getExtractVersion,
+  setCached,
+  setExtractVersion,
+  setLastSync,
+} from "./storage";
 
 /**
  * JSONP-fetches one sheet tab and resolves with the parsed `SheetResponse`.
@@ -123,76 +147,182 @@ export function fetchSheet(
     };
 
     // Build the JSONP URL and append the script tag to start the fetch.
-    script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&sheet=${encodeURIComponent(tab)}`;
+    // `headers=0` disables gviz's header-row auto-detection — see the
+    // "headers=0 is load-bearing" note at the top of this file.
+    script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&headers=0&sheet=${encodeURIComponent(tab)}`;
     document.body.appendChild(script);
   });
 }
 
-// Default column list: the LAB/LEVEL/COST/DURATION/% GAIN columns in the
-// eHP and eDamage tabs, where all five are contiguous. Tabs whose layout
-// differs (regen, eEcon) pass their own list via `getSheetTabs`.
-const DEFAULT_COLS = [5, 6, 7, 8, 9];
+/**
+ * Which source column feeds each canonical header, in header order. Exactly
+ * five entries — the tuple type is what lets `isDataRow` index COL_DURATION
+ * without a possibly-undefined lookup.
+ */
+export type ColumnMap = readonly [number, number, number, number, number];
+
+// Hardcoded canonical headers. We don't trust the spreadsheet's own header
+// row because it isn't consistent across tabs (eEcon calls LAB "Upgrade";
+// Shard Path leaves LEVEL blank).
+const HEADERS = ["LAB", "LEVEL", "COST", "DURATION", "% GAIN"];
+
+// Positions within HEADERS / a ColumnMap. Named so `isDataRow` reads as the
+// rule it implements rather than as `cols[3]`.
+const COL_LAB = 0;
+const COL_LEVEL = 1;
+const COL_COST = 2;
+const COL_DURATION = 3;
+
+// Default column map: the LAB/LEVEL/COST/DURATION/% GAIN columns in the eHP,
+// eDamage and Shard Path tabs, where all five are contiguous. Tabs whose
+// layout differs (regen, eEcon) pass their own map via `getSheetTabs`.
+const DEFAULT_COLS: ColumnMap = [5, 6, 7, 8, 9];
+
+/**
+ * Cache schema version — bump this whenever a change to `extractTableData`,
+ * `isDataRow`, or the per-tab column maps in `getSheetTabs` means previously
+ * cached tables are no longer what today's extractor would produce.
+ *
+ * `fetchAndCacheAll` stamps it; `loadFromCache` refuses to trust a cache
+ * carrying any other value. That pairing lives entirely in this file on
+ * purpose: the rule "bump when you change the extractor" is only useful if
+ * it's visible to whoever is changing the extractor.
+ *
+ * Version log:
+ *   1 — eEcon v28.0 column fix (July 2026). Never stamped; detected instead
+ *       by sniffing cached rows for a misaligned LAB column. Those caches
+ *       have no stamp at all, so version 2 supersedes the heuristic.
+ *   2 — row-discovery rewrite (August 2026). Rows are now located by content
+ *       instead of a fixed 3..100 window, and `headers=0` changed the row
+ *       indices the old window was calibrated against. Cached tables from
+ *       version 1 are both misaligned (Shard Path lost its first, highest-ROI
+ *       step) and truncated (any path longer than the old 100-row cap).
+ */
+export const EXTRACT_VERSION = 2;
+
+// Google Sheets serialises formula errors as these literal strings, and gviz
+// hands them to us as ordinary cell text. Normalising them to "" matters most
+// for the LAB column: a broken VLOOKUP in the Modules sheet really did turn
+// every Shard Path cell into "#N/A", and a non-blank LAB is the first thing
+// `isDataRow` looks for — without this, that tab would have yielded 97 rows
+// of a lab literally named "#N/A".
+const ERROR_LITERALS =
+  /^#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|ERROR!|GETTING_DATA)$/;
+
+// Upper bound on extracted data rows. Purely a runaway guard against a
+// malformed response — the longest real path (eDamage, ~145 steps as of
+// August 2026) lives in a tab only ~150 rows tall, so this should never bind.
+// If it ever does we warn, because silent row loss is the exact bug the
+// row-discovery rewrite existed to fix.
+const MAX_DATA_ROWS = 500;
+
+/**
+ * Reads one cell as display text, normalising spreadsheet errors to "".
+ *
+ * Prefers the formatted value `cell.f` (display string) over the raw
+ * `cell.v` (numeric). This preserves the spreadsheet's intended formatting
+ * (e.g. "16.455 638%") which our parsers in planner.ts know how to handle.
+ *
+ * `cells` is one row's cell array, which is sparse — trailing empty cells are
+ * absent rather than null — hence the optional indexing.
+ */
+function cellText(cells: SheetCell[] | undefined, colIndex: number): string {
+  const cell = cells?.[colIndex];
+  const text = cell?.f ?? String(cell?.v ?? "");
+  return ERROR_LITERALS.test(text.trim()) ? "" : text;
+}
+
+/**
+ * The single definition of "this row is one upgrade step".
+ *
+ * Used BOTH to locate the start of the table and to filter its body, so the
+ * two can't disagree. That symmetry is the point: an earlier draft used a
+ * strict test to find the start and a loose "not blank everywhere" test for
+ * the body, which meant a row with an errored COST or DURATION was skipped at
+ * the top of the table but kept in the middle — where it would parse to a
+ * free, instant lab that the simulator schedules ahead of everything real.
+ *
+ * Every path tab opens with some combination of blank spacers, a title
+ * ("The Effective Health Lab Path (v28)"), a column-header row, and a
+ * "↓ TIME PATH ↓" direction marker — and each tab uses a DIFFERENT number of
+ * them, so we identify the data rather than count the preamble:
+ *
+ *   - LAB non-blank        — rejects spacer and direction-marker rows, whose
+ *                            text sits in columns outside `cols`
+ *   - LEVEL has a digit    — rejects header rows ("Level", or blank)
+ *   - COST has a digit     — rejects header rows ("Cost")
+ *   - DURATION looks like  — rejects header rows ("Duration") and the title
+ *     "<n>d/h/m"             row, which spills a long string into LAB but
+ *                            leaves the rest blank. Matching the shape
+ *                            `parseDuration` expects (rather than merely "has
+ *                            a digit") is what stops a version-stamped label
+ *                            like "Duration (v28.0)" from reading as data.
+ *
+ * Real rows look like ["Shatter Shards", "lvl 2", "73.95 T", "52d 8h 34m",
+ * "0.295 360%"] and satisfy all four. Requiring four independent signals,
+ * rather than just a non-blank LAB, is what keeps a header row from being
+ * mistaken for the start of the table — Shard Path's header row populates
+ * LAB *and* LEVEL ("Lab" / "Level"), so a LAB-only test would latch onto it.
+ */
+function isDataRow(cells: SheetCell[] | undefined, cols: ColumnMap): boolean {
+  return (
+    cellText(cells, cols[COL_LAB]).trim() !== "" &&
+    /\d/.test(cellText(cells, cols[COL_LEVEL])) &&
+    /\d/.test(cellText(cells, cols[COL_COST])) &&
+    /\d+\s*[dhm]/.test(cellText(cells, cols[COL_DURATION]))
+  );
+}
 
 /**
  * Slices a `SheetResponse` into a clean `TableData` with our canonical
  * 5-column header.
  *
- * Layout assumptions (DO NOT CHANGE without updating the spreadsheet too):
- *   - Header rows at indices 0..2 are skipped (titles, blank, sub-titles).
- *   - Data rows are at indices 3..min(rows.length-1, 100). (The eEcon tab's
- *     data actually starts at index 4 — its row 3 is blank in the selected
- *     columns and gets dropped by the empty-row filter below, so the shared
- *     rowStart=3 still works.)
- *   - `cols` is the ORDERED list of source column indices mapped onto the
- *     canonical headers, one per header. It need not be contiguous — eEcon
- *     uses [6,7,8,9,12] because its % gain column is separated from the
- *     rest (see top-of-file "Hardcoded ranges" note).
+ * `cols` maps each canonical header onto a source column index. It need not
+ * be contiguous — eEcon uses [6,7,8,9,12] because its % gain column is
+ * separated from the rest (see the top-of-file "Hardcoded COLUMNS" note).
  *
- * Each cell prefers the formatted value `cell.f` (display string) over the
- * raw `cell.v` (numeric). This preserves the spreadsheet's intended
- * formatting (e.g. "16.455 638%") which our parsers in planner.ts know how
- * to handle.
+ * Scanning runs to the end of the response rather than stopping at a fixed
+ * row: every path tab holds one contiguous block of steps with nothing
+ * beneath it, so there is no end marker to look for, and the paths have
+ * already outgrown one hardcoded cap. Non-step rows are dropped by
+ * `isDataRow`, which is why the preamble above the table and the direction
+ * markers inside it never reach the output.
  *
- * Empty rows (all cells blank) are dropped so the resulting table is dense.
+ * Returns zero rows for a tab with no recognisable data — a wholly broken
+ * upstream tab yields an empty category rather than a phantom one.
  */
 export function extractTableData(
   response: SheetResponse,
-  cols: number[] = DEFAULT_COLS,
+  cols: ColumnMap = DEFAULT_COLS,
 ): TableData {
   const { rows } = response.table;
-  const rowStart = 3;
-  const rowEnd = 100;
-  // Hardcoded headers — see top-of-file note. The spreadsheet's own header
-  // row is unreliable across tabs.
-  const headers = ["LAB", "LEVEL", "COST", "DURATION", "% GAIN"];
   const tableRows: string[][] = [];
-  for (let r = rowStart; r <= rowEnd && r < rows.length; r++) {
-    const row = rows[r].c;
-    const values: string[] = [];
-    for (const c of cols) {
-      const cell = row?.[c];
-      // Prefer formatted (`f`) over raw (`v`); fall back to "" for null cells.
-      values.push(cell?.f ?? String(cell?.v ?? ""));
+
+  for (const row of rows) {
+    if (tableRows.length >= MAX_DATA_ROWS) {
+      console.warn(
+        `extractTableData: hit the ${MAX_DATA_ROWS}-row cap; later rows were dropped.`,
+      );
+      break;
     }
-    if (!values.every((v) => v === "")) {
-      tableRows.push(values);
-    }
+    if (!isDataRow(row.c, cols)) continue;
+    tableRows.push(cols.map((c) => cellText(row.c, c)));
   }
-  return { headers, rows: tableRows };
+
+  return { headers: HEADERS, rows: tableRows };
 }
 
 /**
  * Internal descriptor for one logical sheet tab as the app sees it.
  * `cols` is optional — when omitted, `extractTableData` uses its default
- * list (the standard [5,6,7,8,9] columns). It is an ordered, possibly
- * non-contiguous list of source column indices, one per canonical header.
+ * map (the standard [5,6,7,8,9] columns).
  */
 interface SheetTab {
   key: string;
   label: string;
   sheetId: string;
   tab: string;
-  cols?: number[];
+  cols?: ColumnMap;
 }
 
 /**
@@ -245,7 +375,15 @@ export function getSheetTabs(
  *
  * Side effects:
  *   - Writes each derived TableData to localStorage via `setCached`.
+ *   - Stamps the cache with `EXTRACT_VERSION`, which is what makes the
+ *     entries trustworthy to `loadFromCache` on the next launch.
  *   - Writes the global last-sync timestamp via `setLastSync`.
+ *
+ * A tab that yields zero rows is cached as an empty table and warned about
+ * rather than treated as an error: gviz answers `status: "ok"` both when a
+ * tab's formulas are broken AND when the tab name doesn't resolve (it quietly
+ * returns the document's first sheet), so there's nothing to distinguish
+ * those from a legitimately empty path. The warning is the only signal.
  */
 export async function fetchAndCacheAll(
   effectivePathsId: string | null,
@@ -273,12 +411,18 @@ export async function fetchAndCacheAll(
       // Slice the shared response into one TableData per logical key.
       for (const tab of group.tabs) {
         const data = extractTableData(response, tab.cols);
+        if (data.rows.length === 0) {
+          console.warn(
+            `"${tab.tab}" produced no usable rows for "${tab.key}". The tab may have been renamed, or its formulas may be erroring.`,
+          );
+        }
         setCached(tab.key, data);
         results[tab.key] = data;
       }
     }),
   );
 
+  setExtractVersion(EXTRACT_VERSION);
   setLastSync(Date.now());
   return results;
 }
@@ -288,9 +432,15 @@ export async function fetchAndCacheAll(
  *
  * Returns null in three cases:
  *   1. Neither sheet is configured (nothing to load).
- *   2. ANY required cache entry is missing — we want all-or-nothing so the
+ *   2. The cache was written by a different extractor version, so its row
+ *      alignment and completeness no longer match what this build expects.
+ *   3. ANY required cache entry is missing — we want all-or-nothing so the
  *      UI doesn't render half-stale data; callers (App.tsx) treat null as
  *      "no cache, please fetch".
+ *
+ * Case 2 is why there is no separate migration step: a stale cache is simply
+ * not trusted, and the refetch it triggers overwrites it. Nothing has to be
+ * deleted, and the check sits next to the extractor whose output it guards.
  *
  * Used on initial load: if the cache is complete, we render instantly and
  * skip the spinner. Otherwise the app falls through to `fetchAndCacheAll`.
@@ -304,6 +454,8 @@ export function loadFromCache(
   if (effectivePathsId) keys.push("eHP", "regen", "eDamage", "eEcon");
   if (modulesId) keys.push("shardPath");
   if (keys.length === 0) return null;
+
+  if (getExtractVersion() !== EXTRACT_VERSION) return null;
 
   const results: Record<string, TableData> = {};
   for (const key of keys) {

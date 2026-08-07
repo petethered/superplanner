@@ -12,17 +12,30 @@
 //     for one lab in one category). The planner simulator consumes LabSteps.
 //   - `PlannerConfig` is the user's persisted planner settings (which
 //     categories are enabled, daily income, planning horizon).
-//   - `SimulationResult` describes the output of the simulator: 3 build slots,
-//     each with an ordered list of `PlannedStep`s that include timing info.
+//   - `SimulationResult` describes the output of the simulator: one build
+//     slot per configured slot, each with an ordered list of `PlannedStep`s
+//     that include timing info.
 // =============================================================================
+
+/**
+ * One cell of a gviz response. `null` for sparse sheets; otherwise `v` is the
+ * raw value and `f` the optional formatted/display value. We always prefer
+ * `f` over `v` when present so the UI shows "1,234.50" rather than "1234.5".
+ */
+export type SheetCell = { v: unknown; f?: string } | null;
+
+/** One row of a gviz response: `c` is the ordered array of its cells. */
+export interface SheetRow {
+  c: SheetCell[];
+}
 
 /**
  * Raw response shape from Google Sheets' gviz/tq JSONP endpoint.
  *
- * The endpoint returns rows-of-cells where each cell can be `null` (sparse
- * sheets) or an object with `v` (raw value) and optional `f` (formatted/
- * display value). We always prefer `f` over `v` when present so the UI
- * shows "1,234.50" rather than "1234.5".
+ * `rows` is dense in the row dimension but sparse in the column dimension —
+ * trailing empty cells are simply absent, so index access into `c` can be
+ * undefined even below `cols.length`. `sheets.ts#cellText` is the only
+ * approved reader for that reason.
  */
 export interface SheetResponse {
   version: string;
@@ -30,7 +43,7 @@ export interface SheetResponse {
   status: string;
   table: {
     cols: Array<{ id: string; label: string; type: string }>;
-    rows: Array<{ c: Array<{ v: unknown; f?: string } | null> }>;
+    rows: SheetRow[];
   };
 }
 
@@ -137,9 +150,9 @@ export interface PlannedStep {
 }
 
 /**
- * One of the 3 research slots ("S1"/"S2"/"S3") with its ordered list of
- * planned steps. The game has 3 concurrent research slots, so the simulator
- * always returns exactly 3 entries — some may have empty `steps`.
+ * One research slot ("S1", "S2", ...) with its ordered list of planned steps.
+ * The simulator returns exactly `slotCount` entries (1–5, defaulting to the
+ * game-canonical 3) — some may have empty `steps`.
  */
 export interface SlotPlan {
   steps: PlannedStep[];
@@ -148,7 +161,7 @@ export interface SlotPlan {
 /**
  * Output of `runSimulation`.
  *
- * - `slots`             — exactly 3 SlotPlans
+ * - `slots`             — exactly `slotCount` SlotPlans
  * - `finalDailyIncome`  — the projected daily income at the end of the plan
  *                         (starts at config.dailyIncome and grows when eECON
  *                         labs complete; non-eECON labs do not affect this)

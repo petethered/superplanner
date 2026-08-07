@@ -8,9 +8,10 @@
 // Coverage map:
 //   - extractSheetId — edit URL, gviz URL, and rejection for non-sheets URLs
 //   - URL storage    — null-when-empty, persistence round-trip
-//   - cache          — null-when-empty, write+read with timestamp,
-//                      `removeCached` drops one entry only, and
+//   - cache          — null-when-empty, write+read with timestamp, and
 //                      `clearAllCache` removes entries AND the lastSync
+//   - extract version — null-when-empty, round-trip, and the invariant that
+//                      `clearAllCache` must NOT sweep it
 //   - last sync      — null-when-empty, persistence round-trip
 // =============================================================================
 
@@ -20,7 +21,8 @@ import {
   setUrls,
   getCached,
   setCached,
-  removeCached,
+  getExtractVersion,
+  setExtractVersion,
   getLastSync,
   setLastSync,
   clearAllCache,
@@ -79,14 +81,6 @@ describe("cache", () => {
     expect(cached?.timestamp).toBeGreaterThan(0);
   });
 
-  it("removes a single cache entry without touching others", () => {
-    setCached("a", { headers: [], rows: [["x"]] });
-    setCached("b", { headers: [], rows: [["y"]] });
-    removeCached("a");
-    expect(getCached("a")).toBeNull();
-    expect(getCached("b")).not.toBeNull();
-  });
-
   it("clears all cache entries and last sync", () => {
     setCached("a", { headers: [], rows: [] });
     setCached("b", { headers: [], rows: [] });
@@ -95,6 +89,29 @@ describe("cache", () => {
     expect(getCached("a")).toBeNull();
     expect(getCached("b")).toBeNull();
     expect(getLastSync()).toBeNull();
+  });
+});
+
+describe("extract version", () => {
+  it("returns null when never stamped", () => {
+    expect(getExtractVersion()).toBeNull();
+  });
+
+  it("stores and retrieves the version", () => {
+    setExtractVersion(2);
+    expect(getExtractVersion()).toBe(2);
+  });
+
+  it("survives clearAllCache", () => {
+    // Load-bearing: `sp_extract_version` deliberately sits outside the
+    // `sp_cache_` prefix that clearAllCache sweeps. If it were swept, every
+    // URL change would leave loadFromCache rejecting the cache it had just
+    // been handed, refetching on every single page load thereafter.
+    setExtractVersion(2);
+    setCached("a", { headers: [], rows: [] });
+    clearAllCache();
+    expect(getCached("a")).toBeNull();
+    expect(getExtractVersion()).toBe(2);
   });
 });
 

@@ -12,7 +12,12 @@
 //   - `sp_cache_<sheet-key>`   — JSON-serialized CachedSheet, one per sheet
 //                                tab (eHP / regen / eDamage / eEcon /
 //                                shardPath)
+//   - `sp_extract_version`     — number; which extractor wrote the cache above
 //   - `sp_planner_config`      — written by Planner.tsx, NOT this module
+//
+// `sp_extract_version` deliberately does NOT use the `sp_cache_` prefix, so
+// that `clearAllCache` (which sweeps that prefix) can't wipe it as a side
+// effect of the very migration that sets it.
 //
 // All getters return `null` when the key is absent so callers can branch on
 // presence without a try/catch around JSON.parse. We do NOT defensively
@@ -29,6 +34,7 @@ const KEYS = {
   URLS: "sp_urls",
   LAST_SYNC: "sp_last_sync",
   CACHE: "sp_cache_",
+  EXTRACT_VERSION: "sp_extract_version",
 } as const;
 
 /** Returns the user's stored sheet URLs, or null if they've never configured. */
@@ -59,11 +65,24 @@ export function setCached(key: string, data: TableData): void {
   localStorage.setItem(KEYS.CACHE + key, JSON.stringify(entry));
 }
 
-/** Removes one cached sheet entry. Used by the one-shot cache migration in
- *  App.tsx — since `loadFromCache` in sheets.ts is all-or-nothing, removing
- *  a single entry is enough to force a full fresh fetch on next load. */
-export function removeCached(key: string): void {
-  localStorage.removeItem(KEYS.CACHE + key);
+/**
+ * Returns the extractor version that last wrote the cache, or null for caches
+ * written before this key existed (which is every cache predating the August
+ * 2026 row-discovery rewrite).
+ *
+ * Read by `loadFromCache` in sheets.ts: a mismatch means the cached tables
+ * were sliced by an older `extractTableData` and may be misaligned or
+ * truncated, so they aren't trusted. See `EXTRACT_VERSION` in sheets.ts.
+ */
+export function getExtractVersion(): number | null {
+  const raw = localStorage.getItem(KEYS.EXTRACT_VERSION);
+  return raw ? Number(raw) : null;
+}
+
+/** Stamps the cache with the extractor version that wrote it. Called by
+ *  `fetchAndCacheAll` after a successful sync. */
+export function setExtractVersion(version: number): void {
+  localStorage.setItem(KEYS.EXTRACT_VERSION, String(version));
 }
 
 /** Returns the most-recent sync timestamp (epoch ms), or null if never
@@ -91,6 +110,12 @@ export function setLastSync(timestamp: number): void {
  * Note: this iterates `localStorage.length` and collects keys before
  * removing them, because `removeItem` shifts indices and would skip entries
  * if removed during iteration.
+ *
+ * Deliberately does NOT touch `sp_extract_version` — that key records which
+ * extractor shape the cache uses, not the cache's contents, and it is stamped
+ * again by the next `fetchAndCacheAll` anyway. This is exactly why the key
+ * avoids the `sp_cache_` prefix that the sweep below matches on; if you ever
+ * broaden that prefix to `sp_`, `loadFromCache` starts rejecting every cache.
  */
 export function clearAllCache(): void {
   const keysToRemove: string[] = [];

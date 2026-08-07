@@ -46,13 +46,30 @@ naming era:
 - `sp_urls` — JSON SheetUrls
 - `sp_last_sync` — number (epoch ms)
 - `sp_cache_<sheet-key>` — one entry per sheet tab
+- `sp_extract_version` — number; which extractor shape wrote the cache
 - `sp_planner_config` — written by `Planner.tsx`, includes `enabledTypes`
+
+`sp_extract_version` deliberately avoids the `sp_cache_` prefix, because
+`clearAllCache` sweeps that prefix and would otherwise wipe the stamp it
+needs to survive.
 
 The values inside `enabledTypes` are also stable — `"eHP" / "regen" /
 "eDAMAGE" / "eECON" / "SHARD PATH"`. Display labels are mapped via
 `TYPE_DISPLAY` in `Planner.tsx` and `TYPE_LABELS` in `TableGrid.tsx`. If you
 need to rename any storage key, write a one-shot migration in
 `App.tsx` first.
+
+## Bump EXTRACT_VERSION when you change the extractor
+
+`EXTRACT_VERSION` lives in `src/lib/sheets.ts`. **Bump it, and add a line to
+the version log beside it, whenever you change `extractTableData`,
+`isDataRow`, or the per-tab column maps in `getSheetTabs`.** Cached tables
+written by the old shape would otherwise be trusted forever — that is exactly
+how the July 2026 eEcon misalignment survived a release.
+
+No migration code is needed: `fetchAndCacheAll` stamps the version and
+`loadFromCache` refuses any cache carrying a different one, so a bump makes
+the next launch refetch on its own.
 
 ## Architecture map
 
@@ -90,7 +107,7 @@ served from the root of a custom domain, NOT a subpath. Don't change it.
 - `npm run dev` — Vite dev server
 - `npm run build` — `tsc -b && vite build` (also re-captures `__BUILD_DATE__`)
 - `npx tsc --noEmit -p tsconfig.app.json` — typecheck only
-- `npx vitest run` — full test suite (49 tests today)
+- `npx vitest run` — full test suite (62 tests today)
 
 ## Brand wordmark rule
 
@@ -135,7 +152,7 @@ After any non-trivial change:
 
 ```bash
 npx tsc --noEmit -p tsconfig.app.json   # typecheck
-npx vitest run                          # unit tests (currently 49 tests)
+npx vitest run                          # unit tests (currently 62 tests)
 ```
 
 Both should be silent / all-green. UI-level changes also benefit from a
