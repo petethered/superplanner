@@ -17,7 +17,7 @@
 export type TowerSite = 'summary' | 'modules' | 'planner';
 
 const SITES: { id: TowerSite; label: string; href: string }[] = [
-  { id: 'summary', label: 'Generate Profile Images', href: 'https://towersummary.com/' },
+  { id: 'summary', label: 'Share Your Tower Graphics', href: 'https://towersummary.com/' },
   { id: 'modules', label: 'Track Your Mod Pulls', href: 'https://moduletracker.com/' },
   { id: 'planner', label: 'EP Lab Planner', href: 'https://effectivepathplanner.com/' },
 ];
