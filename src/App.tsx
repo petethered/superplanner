@@ -37,6 +37,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { TableGrid } from "./components/TableGrid";
 import { Planner } from "./components/Planner";
 import { Footer } from "./components/Footer";
+import { TowerSitesNav } from "./shared/TowerSitesNav";
 import {
   getUrls,
   setUrls,
@@ -123,12 +124,20 @@ export default function App() {
   }
 
   // First-run: show the setup form until at least one URL is provided.
+  // TowerSitesNav: cross-site bar shared with towersummary.com and
+  // moduletracker.com (canonical copy in tower-summary-graphics/src/shared).
   if (!urls) {
-    return <SetupPage onSave={handleSaveUrls} />;
+    return (
+      <>
+        <TowerSitesNav current="planner" />
+        <SetupPage onSave={handleSaveUrls} />
+      </>
+    );
   }
 
   return (
     <div className="min-h-screen flex flex-col">
+      <TowerSitesNav current="planner" />
       <Navbar
         onSync={handleSync}
         onOpenSettings={() => setSettingsOpen(true)}
