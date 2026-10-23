@@ -21,14 +21,16 @@
 //   `extractTableData` needs a per-tab COLUMN LIST that matches the layout of
 //   the Effective Paths spreadsheet. If the upstream sheet structure changes,
 //   the column lists in `getSheetTabs` must change too. Current per-tab lists:
-//     - eHP / eDamage / shardPath: [5,6,7,8,9]  (the default — Lab, lvl,
-//       Cost, Duration, %gain are contiguous)
+//     - eHP / shardPath: [5,6,7,8,9]  (the default — Lab, lvl, Cost,
+//       Duration, %gain are contiguous)
 //     - regen:         [27,28,29,30,31] (same shape, different slice of the
 //       physical eHP tab)
 //     - eEcon:         [6,7,8,9,12]  (the v28.0 "Avg. CPK Time Path" layout
 //       shifted the table one column right and inserted "Recommended
 //       Coin/H" (10) and "Time to farm Cost" (11) between Duration and the
 //       % gain column, so the selection is NON-contiguous)
+//     - eDamage:       [7,8,9,10,13] (the v28.0 "Time & Coin" layout — two
+//       columns right of the default, same inserted pair as eEcon at 11-12)
 //   Column lists exist precisely because eEcon's % gain is no longer
 //   adjacent to the other four columns — a start/end window can't express
 //   that.
@@ -173,9 +175,9 @@ const COL_LEVEL = 1;
 const COL_COST = 2;
 const COL_DURATION = 3;
 
-// Default column map: the LAB/LEVEL/COST/DURATION/% GAIN columns in the eHP,
-// eDamage and Shard Path tabs, where all five are contiguous. Tabs whose
-// layout differs (regen, eEcon) pass their own map via `getSheetTabs`.
+// Default column map: the LAB/LEVEL/COST/DURATION/% GAIN columns in the eHP
+// and Shard Path tabs, where all five are contiguous. Tabs whose layout
+// differs (regen, eDamage, eEcon) pass their own map via `getSheetTabs`.
 const DEFAULT_COLS: ColumnMap = [5, 6, 7, 8, 9];
 
 /**
@@ -197,8 +199,12 @@ const DEFAULT_COLS: ColumnMap = [5, 6, 7, 8, 9];
  *       indices the old window was calibrated against. Cached tables from
  *       version 1 are both misaligned (Shard Path lost its first, highest-ROI
  *       step) and truncated (any path longer than the old 100-row cap).
+ *   3 — eDamage v28.0 "Time & Coin" column fix (October 2026). The tab moved
+ *       to cols [7,8,9,10,13]; under the old default [5..9] no row passed
+ *       `isDataRow`, so version-2 caches hold an EMPTY eDamage table and the
+ *       planner never scheduled a damage lab.
  */
-export const EXTRACT_VERSION = 2;
+export const EXTRACT_VERSION = 3;
 
 // Google Sheets serialises formula errors as these literal strings, and gviz
 // hands them to us as ordinary cell text. Normalising them to "" matters most
@@ -348,7 +354,14 @@ export function getSheetTabs(
       { key: "eHP", label: "eHP", sheetId: effectivePathsId, tab: "eHP" },
       // regen reuses the eHP tab but slices a different column range.
       { key: "regen", label: "Regen", sheetId: effectivePathsId, tab: "eHP", cols: [27, 28, 29, 30, 31] },
-      { key: "eDamage", label: "eDamage", sheetId: effectivePathsId, tab: "eDamage" },
+      // eDamage's v28.0 "Time & Coin" layout shifted the table two columns
+      // right (LAB 7, lvl 8, Cost 9, Duration 10) and, like eEcon, inserted
+      // "Recommended Coin/H" (11) and "Time to farm Cost" (12) before the
+      // % gain column (13). The path interleaves coin-only Enhancements
+      // ("Damage +", "Critical Factor +", …) with labs; those rows leave
+      // Duration blank, so `isDataRow` drops them — correct, because they
+      // never occupy a research slot.
+      { key: "eDamage", label: "eDamage", sheetId: effectivePathsId, tab: "eDamage", cols: [7, 8, 9, 10, 13] },
       // eEcon's v28.0 layout ("The Effective Avg. CPK Time Path") shifted
       // the table one column right vs. eHP/eDamage and inserted
       // "Recommended Coin/H" (col 10) and "Time to farm Cost" (col 11)

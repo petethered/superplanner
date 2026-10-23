@@ -241,6 +241,23 @@ describe("extractTableData", () => {
     ]);
   });
 
+  it("keeps eDamage labs and drops its duration-less Enhancement rows", () => {
+    // eDamage v28.0 ("Time & Coin" path) sits at 7-10 + 13 and interleaves
+    // coin-only Enhancements ("Damage +") whose Duration cell is blank. Their
+    // "Time to farm Cost" (col 12) looks like a duration, but it sits outside
+    // the map's DURATION slot, so it must not rescue the row.
+    const cols: ColumnMap = [7, 8, 9, 10, 13];
+    const enhancement = at(cols, ["Damage +", "lvl 120", "74.69 q", "", "2.042 386%"]);
+    enhancement[12] = { v: "0d  8h 11m" };
+    const sheet = makeSheet([
+      ...preamble(cols),
+      enhancement,
+      dataRow(cols, "Attack Speed", 39),
+    ]);
+    const data = extractTableData(sheet, cols);
+    expect(data.rows.map((r) => r[0])).toEqual(["Attack Speed"]);
+  });
+
   it("drops direction-marker rows that appear inside the table", () => {
     // The marker carries "↓ STONE PATH ↓" in a column OUTSIDE the map, so
     // every selected cell is blank.
